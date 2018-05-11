@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css?family=Inconsolata|Indie+Flower|Roboto:400,700|Roboto+Mono');
+#floor {
+    margin: 0px;
+    background-color: #f1f1f1;
+    box-sizing: border-box;
+    overflow: hidden;
+    position: fixed;
+    height: 100%;
+    width: 100%;
+}
+#hidden-name {
+    position: absolute;
+    width: 100%;
+    color: darkgray;
+}
+#backdrop {
+    position: fixed;
+    background-color: #32096C;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    transform: scaleY(0);    
+    transition-delay: 500ms;
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(.5, 0, 0, 1);
+    top: 0;
+}
+.fill {
+    background-color: #2B2D55;
+}
+#backdrop.dropIn {
+    transform: scaleY(1);
+}
+.name-head {
+    /*font-family: 'Indie Flower', cursive;*/
+    /*font-family: 'Inconsolata', monospace;*/
+    /*font-family: 'Roboto', sans-serif;*/
+    font-size: 10vw;
+}
+
+/*General CSS below*/
+
+html, input {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 15px; 
+    color: #1f1f1f;
+    box-sizing: border-box;
+}
+.vertical-align {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.center {
+    text-align: center;
+}
+.clearfix { 
+    display: inline-block; 
+    width: 100%;
+}
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+    outline: none;
+}

@@ -1,0 +1,15 @@
+---
+applications:
+  - name: event-hub-java-rest-example
+    memory: 512M
+    instances: 1
+    timeout: 180
+    path: target/spring-rest-1.0.0.jar
+    buildpack: java-buildpack
+    env:
+     UAA_INSTANCE_NAME: <Bound UAA Instance Name>
+     EVENTHUB_INSTANCE_NAME: <Bound Eventhub Instance Name>
+     CLIENT_ID: <UAA Client ID>
+     CLIENT_SECRET: <UAA Client Secret>
+
+

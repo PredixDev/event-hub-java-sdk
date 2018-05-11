@@ -1,0 +1,96 @@
+syntax = "proto3";
+option java_multiple_files = true;
+option java_package = "com.ge.predix.eventhub";
+option java_outer_classname = "EventHubService";
+package predix.eventhub;
+
+message Timestamp {
+
+  // Represents seconds of UTC time since Unix epoch
+  // 1970-01-01T00:00:00Z. Must be from from 0001-01-01T00:00:00Z to
+  // 9999-12-31T23:59:59Z inclusive.
+  int64 seconds = 1;
+
+  // Non-negative fractions of a second at nanosecond resolution. Negative
+  // second values with fractions must still have non-negative nanos values
+  // that count forward in time. Must be from 0 to 999,999,999
+  // inclusive.
+  int32 nanos = 2;
+}
+
+message Message {
+  string id = 1; // Message ID - UUID
+  bytes body = 2; // Payload from the Producer. there is also "Any" type, but its still under development
+  string zone_id = 3;
+  map<string, string> tags = 4; // Some general attributes, could potentially be used for tagging and others
+  bytes key = 5;
+  string topic = 6 ;
+  int32 partition = 7 ;
+  int64 offset    = 8 ;
+  Timestamp timestamp = 9 ;
+}
+
+message Ack {
+  string id = 1;
+  AckStatus status_code = 2;
+  string desc = 3;
+  string topic = 4 ;  // this you will only get this the ack is a success
+  int32 partition = 5 ; // this you will only get this the ack is a success
+  int64 offset    = 6 ; // this you will only get this the ack is a success
+  Timestamp timestamp = 7 ; // this you will only get this the ack is a success
+  bytes body = 8 ; // you will only get this if the ack is a failure .
+  string zone_id = 9; // you will only get this if the ack is a failure .
+  map<string, string> tags = 10; // you will only get this if the ack is a failure .
+  bytes key = 11; // you will only get this if the ack is a failure .
+}
+
+enum AckStatus {
+  ACCEPTED = 0;
+  BAD_REQUEST = 1;
+  REQUEST_TOO_LARGE = 2;
+  FAILED = 3;
+}
+
+message Messages {
+  repeated Message msg = 1;
+}
+
+message PublishRequest {
+  Messages messages = 1;
+}
+
+message SubscriptionMessage {
+  Messages messages = 1;
+}
+
+message PublishResponse {
+  repeated Ack ack = 1;
+}
+
+message SubscriptionResponse {
+  repeated Ack ack = 1 ;
+}
+
+message SubscriptionAcks {
+  repeated Ack ack = 1 ;
+}
+
+message SubscriptionRequest {
+  string zone_id = 1; // zone name, this will be the user's zone
+  string subscriber = 2; // subscriber name, this will be utilized to parallelize processing
+  string instance_id = 3; // particular instance of the subscriber
+}
+
+// Publisher service definition
+service Publisher {
+  // Send message to topic. Topic name will be in URI
+  rpc send (stream PublishRequest) returns (stream PublishResponse) {}
+}
+
+// Subscriber service definition
+service Subscriber {
+  // Receive message from a topic, as a subscriber
+  rpc receive (SubscriptionRequest) returns (stream Message) {}
+  rpc receiveWithAcks (stream SubscriptionResponse) returns (stream Message) {}
+  rpc subscribe (stream SubscriptionAcks) returns (stream SubscriptionMessage) {}
+}
