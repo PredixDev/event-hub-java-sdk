@@ -1,25 +1,41 @@
 package com.ge.predix.eventhub.client;
 
+import static com.ge.predix.eventhub.client.utils.TestUtils.SUBSCRIBER_ACTIVE_WAIT_LENGTH;
+import static com.ge.predix.eventhub.client.utils.TestUtils.buildAndSendMessage;
+import static com.ge.predix.eventhub.client.utils.TestUtils.buildAndSendMessages;
+import static com.ge.predix.eventhub.client.utils.TestUtils.createRandomString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+
 import javax.net.ssl.SSLException;
 
-import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-
-import com.ge.predix.eventhub.Ack;
-import com.ge.predix.eventhub.EventHubClientException;
-import com.ge.predix.eventhub.Message;
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
-import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
 import org.junit.runners.MethodSorters;
 
-import static com.ge.predix.eventhub.client.utils.TestUtils.*;
-import static org.junit.Assert.*;
+import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.client.utils.TestUtils.TestSubscribeAckCallback;
+import com.ge.predix.eventhub.client.utils.TestUtils.TestSubscribeBatchCallback;
+import com.ge.predix.eventhub.client.utils.TestUtils.TestSubscribeCallback;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.configuration.PublishConfiguration;
+import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.Message;
 
 /**
  * Created by 212571077 on 7/11/16.

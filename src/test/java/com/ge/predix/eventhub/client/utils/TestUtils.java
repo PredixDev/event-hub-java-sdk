@@ -1,20 +1,22 @@
 package com.ge.predix.eventhub.client.utils;
 
-import com.ge.predix.eventhub.Ack;
-import com.ge.predix.eventhub.EventHubClientException;
-import com.ge.predix.eventhub.EventHubLogger;
-import com.ge.predix.eventhub.Message;
-import com.ge.predix.eventhub.client.Client;
-import com.ge.predix.eventhub.configuration.LoggerConfiguration;
-
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 import org.junit.Ignore;
+
+import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.EventHubLogger;
+import com.ge.predix.eventhub.client.Client;
+import com.ge.predix.eventhub.configuration.LoggerConfiguration;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.Message;
 
 /**
  * This class is used for defining things used across multiple tests

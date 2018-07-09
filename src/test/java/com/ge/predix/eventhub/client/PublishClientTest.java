@@ -1,5 +1,6 @@
 package com.ge.predix.eventhub.client;
 
+import static com.ge.predix.eventhub.client.utils.TestUtils.SUBSCRIBER_ACTIVE_WAIT_LENGTH;
 import static com.ge.predix.eventhub.client.utils.TestUtils.createRandomString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.Assert.*;
@@ -12,24 +13,28 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.ge.predix.eventhub.client.utils.TestUtils;
-import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import com.google.protobuf.ByteString;
-import io.grpc.Status;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-
-import com.ge.predix.eventhub.Ack;
-import com.ge.predix.eventhub.AckStatus;
-import com.ge.predix.eventhub.EventHubClientException;
-import com.ge.predix.eventhub.Message;
-import com.ge.predix.eventhub.Messages;
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
-import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
 import org.junit.runners.MethodSorters;
-import static com.ge.predix.eventhub.client.utils.TestUtils.SUBSCRIBER_ACTIVE_WAIT_LENGTH;
+
+import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.client.utils.TestUtils;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.configuration.PublishConfiguration;
+import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.AckStatus;
+import com.ge.predix.eventhub.stub.Message;
+import com.ge.predix.eventhub.stub.Messages;
+import com.google.protobuf.ByteString;
 
 /**
  * Created by 212571077 on 7/8/16.

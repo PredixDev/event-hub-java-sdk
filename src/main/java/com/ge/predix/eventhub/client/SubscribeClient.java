@@ -6,6 +6,10 @@ import java.util.logging.Level;
 
 import com.ge.predix.eventhub.*;
 import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.Message;
+import com.ge.predix.eventhub.stub.SubscriberGrpc;
+
 import io.grpc.*;
 import io.grpc.stub.StreamObserver;
 

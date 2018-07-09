@@ -32,7 +32,7 @@ public class LoggerConfiguration {
         FINE("fine", Level.FINE), //
         FINER("finer", Level.FINER), //
         ALL("all", Level.ALL), //
-        FINEST("finer", Level.FINEST); //
+        FINEST("finest", Level.FINEST); //
 
         private final String text;
         private final Level level;

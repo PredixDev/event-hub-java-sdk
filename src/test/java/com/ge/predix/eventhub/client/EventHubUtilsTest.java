@@ -18,12 +18,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.ge.predix.eventhub.*;
-import com.ge.predix.eventhub.configuration.LoggerConfiguration;
-import com.google.protobuf.ByteString;
 import org.junit.FixMethodOrder;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -31,9 +26,19 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import org.junit.runners.MethodSorters;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.EventHubLogger;
+import com.ge.predix.eventhub.EventHubUtils;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.configuration.LoggerConfiguration;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.AckStatus;
+import com.ge.predix.eventhub.stub.Message;
+import com.ge.predix.eventhub.stub.PublishResponse;
+import com.google.protobuf.ByteString;
 
 @Ignore
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)

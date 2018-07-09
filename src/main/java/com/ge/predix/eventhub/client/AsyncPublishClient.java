@@ -1,18 +1,26 @@
 package com.ge.predix.eventhub.client;
 
-import com.ge.predix.eventhub.*;
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
-import io.grpc.Channel;
-import io.grpc.ManagedChannel;
-import io.grpc.Metadata;
-import io.grpc.stub.MetadataUtils;
+import static com.ge.predix.eventhub.EventHubConstants.EXCEPTION_KEY;
+import static com.ge.predix.eventhub.EventHubConstants.FUNCTION_NAME_STRING;
+import static com.ge.predix.eventhub.EventHubConstants.MSG_KEY;
+import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.PUBLISHER_ERROR;
+import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.PUBLISHER_MSG;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 
-import static com.ge.predix.eventhub.EventHubConstants.*;
-import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.*;
+import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.EventHubUtils;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.PublishResponse;
+import com.ge.predix.eventhub.stub.PublisherGrpc;
+
+import io.grpc.Channel;
+import io.grpc.ManagedChannel;
+import io.grpc.Metadata;
+import io.grpc.stub.MetadataUtils;
 
 /**
  * Created by 212428471 on 8/14/17.
@@ -83,7 +91,7 @@ class AsyncPublishClient extends PublishClient {
             ehLogger.log( Level.INFO,
                     PUBLISHER_MSG,
                     MSG_KEY, "publishing to topic(s)",
-                    "topic", configuration.getSubscribeConfiguration().getTopics().toString(),
+                    "topic", configuration.getPublishConfiguration().getTopic(),
                     FUNCTION_NAME_STRING, "setPublishModeHeaders");
             header.put(topic, configuration.getPublishConfiguration().getTopic());
         }

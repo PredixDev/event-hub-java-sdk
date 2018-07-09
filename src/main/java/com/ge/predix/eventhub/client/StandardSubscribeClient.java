@@ -1,22 +1,22 @@
 package com.ge.predix.eventhub.client;
 
-import com.ge.predix.eventhub.EventHubClientException;
-import com.ge.predix.eventhub.EventHubUtils;
-import com.ge.predix.eventhub.Message;
-import com.ge.predix.eventhub.SubscriptionRequest;
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
-import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
-import io.grpc.Channel;
-import io.grpc.ManagedChannel;
-import io.grpc.stub.MetadataUtils;
-import io.grpc.stub.StreamObserver;
+import static com.ge.predix.eventhub.EventHubConstants.FUNCTION_NAME_STRING;
+import static com.ge.predix.eventhub.EventHubConstants.MSG_KEY;
+import static com.ge.predix.eventhub.EventHubConstants.SubscribeClientConstants.SUBSCRIBER_ERR;
 
 import java.util.List;
 import java.util.logging.Level;
 
-import static com.ge.predix.eventhub.EventHubConstants.FUNCTION_NAME_STRING;
-import static com.ge.predix.eventhub.EventHubConstants.MSG_KEY;
-import static com.ge.predix.eventhub.EventHubConstants.SubscribeClientConstants.SUBSCRIBER_ERR;
+import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
+import com.ge.predix.eventhub.stub.Message;
+import com.ge.predix.eventhub.stub.SubscriptionRequest;
+
+import io.grpc.Channel;
+import io.grpc.ManagedChannel;
+import io.grpc.stub.MetadataUtils;
+import io.grpc.stub.StreamObserver;
 
 /**
  * Standard Subscribe Client child of Subscribe Client

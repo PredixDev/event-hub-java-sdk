@@ -14,25 +14,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLException;
 
-import com.ge.predix.eventhub.EventHubLogger;
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
-import com.ge.predix.eventhub.configuration.LoggerConfiguration;
-import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import io.grpc.*;
-import io.grpc.internal.ManagedChannelImpl;
 import org.junit.FixMethodOrder;
 import org.junit.Ignore;
-
-import io.grpc.netty.GrpcSslContexts;
-import io.grpc.netty.NettyChannelBuilder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.MethodSorters;
 
 import com.ge.predix.eventhub.EventHubClientException;
-import org.junit.runners.MethodSorters;
+import com.ge.predix.eventhub.EventHubLogger;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.configuration.LoggerConfiguration;
+import com.ge.predix.eventhub.configuration.PublishConfiguration;
+
+import io.grpc.Channel;
+import io.grpc.ClientInterceptors;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.Status;
 @Ignore
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class BackOffDelayTest {

@@ -13,6 +13,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.Message;
+import com.ge.predix.eventhub.stub.PublishResponse;
+import com.ge.predix.eventhub.stub.SubscriptionMessage;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;

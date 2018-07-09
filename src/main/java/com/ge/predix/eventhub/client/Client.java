@@ -16,6 +16,9 @@ import com.ge.predix.eventhub.*;
 import com.ge.predix.eventhub.configuration.LoggerConfiguration;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
 import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.Message;
+import com.ge.predix.eventhub.stub.Messages;
 import com.google.protobuf.ByteString;
 import io.grpc.*;
 import io.grpc.health.v1.HealthCheckRequest;
@@ -38,7 +41,7 @@ import static com.ge.predix.eventhub.EventHubConstants.EnvironmentVariables.*;
 public class Client implements AutoCloseable {
     private static final String healthCheckUrl = "predix-event-hub.grpc.health";
     private static final Long ttlHealth = 30000L;
-    private static final String sdkVersionString = "2.0.1";
+    private static final String sdkVersionString = "2.0.7";
 
 
     private Channel channel;
@@ -109,6 +112,12 @@ public class Client implements AutoCloseable {
         this.ehLogger = new EventHubLogger(this.getClass(), configuration);
         this.configuration = configuration;
         ehLogger.log(Level.INFO, "starting EventHub client");
+
+        JSONObject mandatoryClientLog = new JSONObject();
+        mandatoryClientLog.put("sdk_version", sdkVersionString);
+        mandatoryClientLog.put("zoneID", this.configuration.getZoneID());
+        mandatoryClientLog.put("runtimeID", this.configuration.getLoggerConfiguration().getRuntimeId());
+        System.out.println(mandatoryClientLog);
 
         buildChannel();
         startHealthChecker();

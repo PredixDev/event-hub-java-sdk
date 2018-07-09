@@ -10,6 +10,7 @@ Event Hub SDK is a library that helps connect an application to [Event Hub](http
 	 - [Closing Connection](#closing-connection)
 	 - [Automatic Reconnection](#automatic-reconnection)
 	 - [OAuth2 token management](#oauth2-token-management)
+ - [Debugging](#debugging)
  - [Building SDK from repository](#building-sdk-from-repository)
  - [Common Issues](#building-sdk-from-repository)
 
@@ -22,7 +23,7 @@ The most simple way to use this SDK is to pull from the Predix Snapshot artifact
   <dependency>
     <groupId>com.ge.predix.eventhub</groupId>
     <artifactId>predix-event-hub-sdk</artifactId>
-    <version>2.0.1</version>
+    <version>2.0.7</version>
   </dependency>
 ...
 </dependencies>

@@ -4,7 +4,9 @@
 */
 package com.ge.predix.eventhub.client;
 
-import static com.ge.predix.eventhub.client.utils.TestUtils.*;
+import static com.ge.predix.eventhub.client.utils.TestUtils.SUBSCRIBER_ACTIVE_WAIT_LENGTH;
+import static com.ge.predix.eventhub.client.utils.TestUtils.buildAndSendMessages;
+import static com.ge.predix.eventhub.client.utils.TestUtils.createRandomString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.Assert.*;
 
@@ -17,23 +19,31 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLException;
 
-import com.ge.predix.eventhub.EventHubUtils;
-import com.ge.predix.eventhub.client.utils.TestUtils;
-import com.ge.predix.eventhub.client.utils.TestUtils.*;
-import io.grpc.Status;
-import io.grpc.StatusException;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.MethodSorters;
 
-import com.ge.predix.eventhub.Ack;
-import com.ge.predix.eventhub.AckStatus;
 import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.EventHubUtils;
+import com.ge.predix.eventhub.client.utils.TestUtils;
+import com.ge.predix.eventhub.client.utils.TestUtils.PublishCallback;
+import com.ge.predix.eventhub.client.utils.TestUtils.TestSubscribeCallback;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
 import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
-import org.junit.runners.MethodSorters;
+import com.ge.predix.eventhub.stub.Ack;
+import com.ge.predix.eventhub.stub.AckStatus;
+
+import io.grpc.Status;
+import io.grpc.StatusException;
 
 @Ignore
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -1064,7 +1074,7 @@ public class ClientTest {
 
         EventHubConfiguration configuration_publish_topic_1 = new EventHubConfiguration.Builder()
                 .fromEnvironmentVariables()
-                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC)
+                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.ASYNC)
                         .topic(topicSuffix1)
                         .build())
                 .build();
