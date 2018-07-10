@@ -1,3 +1,4 @@
 com.ge.predix.eventhub
 com.ge.predix.eventhub.client
 com.ge.predix.eventhub.configuration
+com.ge.predix.eventhub.stub
