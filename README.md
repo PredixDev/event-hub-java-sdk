@@ -1,3 +1,10 @@
+<a href="http://predixdev.github.io/predix-event-hub-sdk/javadocs/index.html" target="_blank" >
+	<img height="50px" width="100px" src="images/javadoc.png" alt="view javadoc"></a>
+&nbsp;
+<a href="http://predixdev.github.io/predix-event-hub-sdk" target="_blank">
+	<img height="50px" width="100px" src="images/pages.jpg" alt="view github pages">
+</a>
+
 # Event Hub SDK for Java
 Event Hub SDK is a library that helps connect an application to [Event Hub](https://www.predix.io/services/service.html?id=1987)
 
