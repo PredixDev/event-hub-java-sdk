@@ -16,9 +16,6 @@ import com.ge.predix.eventhub.*;
 import com.ge.predix.eventhub.configuration.LoggerConfiguration;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
 import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.Message;
-import com.ge.predix.eventhub.stub.Messages;
 import com.google.protobuf.ByteString;
 import io.grpc.*;
 import io.grpc.health.v1.HealthCheckRequest;
@@ -41,7 +38,7 @@ import static com.ge.predix.eventhub.EventHubConstants.EnvironmentVariables.*;
 public class Client implements AutoCloseable {
     private static final String healthCheckUrl = "predix-event-hub.grpc.health";
     private static final Long ttlHealth = 30000L;
-    private static final String sdkVersionString = "2.0.7";
+    private static final String sdkVersionString = "2.2.4";
 
 
     private Channel channel;
@@ -102,6 +99,15 @@ public class Client implements AutoCloseable {
         void onMessage(List<Message> messages);
         void onFailure(Throwable throwable);
     }
+
+    public  interface  MetricsCallBack extends Callback{
+        default void onMessage(Object o){
+            onMessage((Message) o);
+        }
+        void onMessage(Message m);
+        void onFailure(Throwable throwable);
+    }
+
 
     /**
      * Creates a new client from the given configuration
@@ -185,14 +191,16 @@ public class Client implements AutoCloseable {
             public void onNext(HealthCheckResponse healthCheckResponse) {
                 ehLogger.log( Level.FINEST,
                         CLIENT_CHANNEL_MSG,
-                        MSG_KEY, "received health check response");
+                        MSG_KEY, "received health check response" + healthCheckResponse);
             }
 
             public void onError(Throwable throwable) {
+                // Extract the Error Status from the cause throwable via 
+                // io.grpc.Status.fromThrowable(throwable) , this helps for debugging
                 ehLogger.log( Level.WARNING,
                         CLIENT_CHANNEL_ERROR,
                          MSG_KEY, "error in health check",
-                         EXCEPTION_KEY,throwable
+                         EXCEPTION_KEY,io.grpc.Status.fromThrowable(throwable)
                         );
             }
 
@@ -286,7 +294,10 @@ public class Client implements AutoCloseable {
                 subscribeClient = new BatchSubscribeClient(channel, originChannel, configuration);
             }else if(configuration.getSubscribeConfiguration().isAcksEnabled()){
                 subscribeClient = new AckSubscribeClient(channel, originChannel, configuration);
-            }else{
+            }else if(configuration.getSubscribeConfiguration().isMetricsEnabled()){
+                subscribeClient = new MetricsSubscribeClient(channel, originChannel, configuration);
+            }
+            else{
                 subscribeClient = new StandardSubscribeClient(channel, originChannel, configuration);
             }
         }

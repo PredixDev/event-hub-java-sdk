@@ -229,13 +229,13 @@ public class EventHubConfiguration {
          */
         public Builder reconnectRetryLimit(Integer reconnectRetryLimit) throws EventHubClientException.InvalidConfigurationException {
 
-            if (reconnectRetryLimit <= 5 && reconnectRetryLimit >= 0) {
+            if (reconnectRetryLimit >= 1) {
                 this.reconnectRetryLimit = reconnectRetryLimit;
                 return this;
             } else {
                 throw new EventHubClientException.InvalidConfigurationException(EventHubUtils.formatJson(
                         CONFIG_ERR,
-                        MSG_KEY,  "reconnectRetryLimit not set. It's value must be between 0 and 5",
+                        MSG_KEY,  "reconnectRetryLimit not set. It's value must be a  positive integer.",
                         "timeout provided", reconnectRetryLimit,
                         FUNCTION_NAME_STRING, "EventHubConfiguration.reconnectRetryLimit"
                 ).toString());

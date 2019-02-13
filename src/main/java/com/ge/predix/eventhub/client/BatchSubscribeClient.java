@@ -1,18 +1,17 @@
 package com.ge.predix.eventhub.client;
 
-import java.util.List;
-
 import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.Message;
+import com.ge.predix.eventhub.SubscriptionAcks;
+import com.ge.predix.eventhub.SubscriptionMessage;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
-import com.ge.predix.eventhub.stub.Message;
-import com.ge.predix.eventhub.stub.SubscriptionAcks;
-import com.ge.predix.eventhub.stub.SubscriptionMessage;
-
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.MetadataUtils;
 import io.grpc.stub.StreamObserver;
+
+import java.util.List;
 
 
 /**

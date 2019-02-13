@@ -1,15 +1,15 @@
 ---
 applications:
   - name: event-hub-java-sample-spark-app
-    memory: 512M
+    memory: 1GB
     instances: 1
     timeout: 180
     path: target/event-hub-java-spark-sample-app-1.0-SNAPSHOT.jar
     buildpack: java-buildpack
     env:
-     UAA_INSTANCE_NAME: <uaa>
-     EVENTHUB_INSTANCE_NAME: <event_hub>
-     CLIENT_ID: <client_id>
-     CLIENT_SECRET: <client_password>
+     UAA_INSTANCE_NAME: <UAA Instance Name>
+     EVENTHUB_INSTANCE_NAME: <Event Hub Instance Name>
+     CLIENT_ID: <Client ID>
+     CLIENT_SECRET: <Client Secret>
      EVENTHUB_ENABLE_DEBUG: true
-     
+     JAVA_OPTS: -Dspark.driver.memory=471859200

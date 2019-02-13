@@ -1,36 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.ge.predix.eventhub</groupId>
-	<artifactId>predix-event-hub-sdk</artifactId>
-	<properties>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
-	</properties>
-    <version>2.0.7</version> <!--- NOTE: also change version in readme and log statement in Client class -->
+    <groupId>com.ge.predix.eventhub</groupId>
+    <artifactId>predix-event-hub-sdk</artifactId>
+    <version>2.2.4</version> <!--- NOTE: also change version in readme and log statement in Client class -->
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty</artifactId>
-            <version>1.10.0</version>
+            <version>1.16.1</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
-            <version>1.10.0</version>
+            <version>1.16.1</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-stub</artifactId>
-            <version>1.10.0</version>
+            <version>1.16.1</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-services</artifactId>
-            <version>1.10.0</version>
+            <version>1.16.1</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
@@ -55,7 +56,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.11</version>
+            <version>4.12</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -78,17 +79,67 @@
             <artifactId>json</artifactId>
             <version>20160810</version>
         </dependency>
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.25</version>
         </dependency>
-
-
-
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.11.1</version>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.11.1</version>
+         </dependency>
+       <!--   <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>2.11.1</version>
+         </dependency> -->
+        <dependency> 
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
+            <version>1.7.25</version>
+        </dependency>
     </dependencies>
-
+    <profiles>
+        <profile>
+            <id>Smoke</id>
+            <properties>
+                <testcase.groups>com.ge.predix.eventhub.test.categories.SmokeTest</testcase.groups>
+            </properties>
+            <activation>
+            <activeByDefault>true</activeByDefault>
+        </activation>
+        </profile>
+        <profile>
+            <id>Sanity</id>
+            <properties>
+                <testcase.groups>com.ge.predix.eventhub.test.categories.SanityTest</testcase.groups>
+            </properties>
+        </profile>
+        <profile>
+            <id>Integration</id>
+            <properties>
+                <testcase.groups>com.ge.predix.eventhub.test.categories.IntegrationTest</testcase.groups>
+            </properties>
+        </profile>
+        <profile>
+            <id>Regression</id>
+            <properties>
+                <testcase.groups>com.ge.predix.eventhub.test.categories.RegressionTest</testcase.groups>
+            </properties>
+        </profile>
+        <profile>
+            <id>Defect</id>
+            <properties>
+                <testcase.groups>com.ge.predix.eventhub.test.categories.DefectTest</testcase.groups>
+            </properties>
+        </profile>
+    </profiles>
     <build>
         <extensions>
             <extension>
@@ -101,17 +152,15 @@
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.5.0</version>
+                <version>0.5.1</version>
                 <configuration>
-                    <!--
-                      The version of protoc must match protobuf-java. If you don't depend on
-                      protobuf-java directly, you will be transitively depending on the
-                      protobuf-java version that grpc depends on.
-                    -->
-                    <protocArtifact>com.google.protobuf:protoc:3.0.0-beta-2:exe:${os.detected.classifier}
+                    <!-- The version of protoc must match protobuf-java. If you don't depend 
+                        on protobuf-java directly, you will be transitively depending on the protobuf-java 
+                        version that grpc depends on. -->
+                    <protocArtifact>com.google.protobuf:protoc:3.5.1-1:exe:${os.detected.classifier}
                     </protocArtifact>
                     <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:0.14.1:exe:${os.detected.classifier}</pluginArtifact>
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.16.1:exe:${os.detected.classifier}</pluginArtifact>
                     <outputDirectory>src/main/java</outputDirectory>
                     <clearOutputDirectory>false</clearOutputDirectory>
                 </configuration>
@@ -124,49 +173,19 @@
                     </execution>
                 </executions>
             </plugin>
-            <!--<plugin>-->
-                <!--<groupId>org.apache.maven.plugins</groupId>-->
-                <!--<artifactId>maven-shade-plugin</artifactId>-->
-                <!--<version>2.4.3</version>-->
-                <!--<configuration>-->
-                    <!--&lt;!&ndash; put your configurations here &ndash;&gt;-->
-                <!--</configuration>-->
-                <!--<executions>-->
-                    <!--<execution>-->
-                        <!--<phase>package</phase>-->
-                        <!--<goals>-->
-                            <!--<goal>shade</goal>-->
-                        <!--</goals>-->
-                        <!--<configuration>-->
-                            <!--<relocations>-->
-                                <!--<relocation>-->
-                                    <!--<pattern>com.google.guava</pattern>-->
-                                    <!--<shadedPattern>com.google.guava.shaded</shadedPattern>-->
-                                    <!--<pattern>com.google.common</pattern>-->
-                                    <!--<shadedPattern>com.google.common.shaded</shadedPattern>-->
-                                    <!--<pattern>org.apache.tomcat</pattern>-->
-                                    <!--<shadedPattern>org.apache.tomcat.shaded</shadedPattern>-->
-                                    <!--<pattern>io.netty.handler</pattern>-->
-                                    <!--<shadedPattern>io.netty.handler.shaded</shadedPattern>-->
-                                    <!--<pattern>io.grpc</pattern>-->
-                                    <!--<shadedPattern>io.grpc.shaded</shadedPattern>-->
-                                    <!--<pattern>io.netty.bootstrap</pattern>-->
-                                    <!--<shadedPattern>io.netty.bootstrap.shaded</shadedPattern>-->
-                                    <!--<pattern>io.netty.channel</pattern>-->
-                                    <!--<shadedPattern>io.netty.channel.shaded</shadedPattern>-->
-                                    <!--<pattern>io.netty.resolver</pattern>-->
-                                    <!--<shadedPattern>io.netty.resolver.shaded</shadedPattern>-->
-                                <!--</relocation>-->
-                            <!--</relocations>-->
-                            <!--<shadeSourcesContent>true</shadeSourcesContent>-->
-                        <!--</configuration>-->
-                    <!--</execution>-->
-                <!--</executions>-->
-            <!--</plugin>-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.19.1</version>
+                <configuration>
+                    <groups>${testcase.groups}</groups>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.7.4.201502262128</version> <!--Current Jenkin's Jacoco plugin (up to v1.0.19) only supports up to Jacoco v7.4-->
+                <version>0.8.2</version> <!--Current Jenkin's Jacoco plugin (up to v1.0.19) only supports up to Jacoco 
+                    v7.4 -->
                 <configuration>
                     <destFile>${project.basedir}/target/jacoco.exec</destFile>
                     <append>true</append>

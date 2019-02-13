@@ -1,11 +1,12 @@
 package com.ge.predix.eventhub.client;
 
-import static com.ge.predix.eventhub.EventHubConstants.EXCEPTION_KEY;
-import static com.ge.predix.eventhub.EventHubConstants.FUNCTION_NAME_STRING;
-import static com.ge.predix.eventhub.EventHubConstants.MSG_KEY;
-import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.PUBLISHER_ERROR;
-import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.PUBLISHER_MSG;
-import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.PUBLISH_STREAM_ERR;
+import com.ge.predix.eventhub.*;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import io.grpc.Channel;
+import io.grpc.ManagedChannel;
+import io.grpc.Metadata;
+import io.grpc.Status;
+import io.grpc.stub.MetadataUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,18 +15,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.ge.predix.eventhub.EventHubClientException;
-import com.ge.predix.eventhub.EventHubUtils;
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.PublishResponse;
-import com.ge.predix.eventhub.stub.PublisherGrpc;
-
-import io.grpc.Channel;
-import io.grpc.ManagedChannel;
-import io.grpc.Metadata;
-import io.grpc.Status;
-import io.grpc.stub.MetadataUtils;
+import static com.ge.predix.eventhub.EventHubConstants.*;
+import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.PUBLISHER_ERROR;
+import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.PUBLISHER_MSG;
+import static com.ge.predix.eventhub.EventHubConstants.PublishClientConstants.PUBLISH_STREAM_ERR;
 
 /**
  * Created by williamgowell on 8/14/17.
@@ -69,6 +62,7 @@ class SyncPublisherClient extends PublishClient {
                     EXCEPTION_KEY, errs.toArray(),
                     "messagesPublished", messagesPublished
                     );
+            errs.forEach((v) -> ehLogger.log(Level.WARNING, "Throwable "+v.getMessage()+v.getStackTrace() )); 
             throw new EventHubClientException.SyncPublisherFlushException(message, errs, messagesPublished);
         }
     }
@@ -102,10 +96,12 @@ class SyncPublisherClient extends PublishClient {
      * @throws EventHubClientException.SyncPublisherFlushException if any erros are waiting to be thrown.
      */
     private synchronized List<Ack> countDown(int sent) throws EventHubClientException {
+        ehLogger.log(Level.FINE, "Begin Countdown");
         ArrayList<Ack> acks = new ArrayList<>();
         if (sent != 0) {
             finishLatch = new CountDownLatch(sent);
             try {
+                ehLogger.log(Level.FINE, "Configuration timeout:"+this.getConfiguration().getTimeout()+" thread:"+Thread.currentThread().getName());
                 finishLatch.await(this.getConfiguration().getTimeout(), TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 ehLogger.log( Level.WARNING,
@@ -116,7 +112,8 @@ class SyncPublisherClient extends PublishClient {
             }
             acks.addAll(publishResponses);
             publishResponses.clear();
-            if (finishLatch.getCount() > 0) {
+            ehLogger.log(Level.FINE, "Total Sent:" + sent +", Acks recieved : "+ acks.size());
+            if (acks.size() < sent) {
                 this.throwError(new EventHubClientException.SyncPublisherTimeoutException(sent, acks));
             }
         }
@@ -129,7 +126,7 @@ class SyncPublisherClient extends PublishClient {
                 FUNCTION_NAME_STRING, "SyncPublishClient.throwStoredErrors").toString()
 
                 , true);
-
+        ehLogger.log(Level.FINE, "End Countdown");
         return acks;
     }
 

@@ -18,29 +18,25 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.ge.predix.eventhub.*;
+import com.ge.predix.eventhub.configuration.LoggerConfiguration;
+import com.ge.predix.eventhub.test.categories.SanityTest;
+import com.ge.predix.eventhub.test.categories.SmokeTest;
+import com.google.protobuf.ByteString;
 import org.junit.FixMethodOrder;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import org.junit.runners.MethodSorters;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.ge.predix.eventhub.EventHubClientException;
-import com.ge.predix.eventhub.EventHubLogger;
-import com.ge.predix.eventhub.EventHubUtils;
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
-import com.ge.predix.eventhub.configuration.LoggerConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
-import com.ge.predix.eventhub.stub.Message;
-import com.ge.predix.eventhub.stub.PublishResponse;
-import com.google.protobuf.ByteString;
-
-@Ignore
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class EventHubUtilsTest {
 
@@ -52,6 +48,7 @@ public class EventHubUtilsTest {
     };
 
     @Test
+    @Category(SanityTest.class)
     public void parseVCAPSForEventHubDetails() {
         String VCAPS = System.getenv(VCAP_SERVICES);
         String eventHubInstanceName = System.getenv(INSTANCE_NAME);
@@ -67,6 +64,7 @@ public class EventHubUtilsTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void parseVCAPSForUAADetails() {
         String VCAPS = System.getenv(VCAP_SERVICES);
         String uaaInstanceName = System.getenv(UAA_INSTANCE_NAME);
@@ -80,6 +78,7 @@ public class EventHubUtilsTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void EventHubConfigFromEnv() {
         try {
 // test manually building vs getting from VCAPS
@@ -123,6 +122,7 @@ public class EventHubUtilsTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void badEventHubConfig() {
         boolean caught = false;
         try {
@@ -134,6 +134,7 @@ public class EventHubUtilsTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void badVCAPS() {
         int caught = 0;
 
@@ -165,6 +166,7 @@ public class EventHubUtilsTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void instanceFromVCAPSSingleton() {
         String VCAPS = System.getenv(VCAP_SERVICES);
         String eventHubInstanceName = System.getenv(INSTANCE_NAME);
@@ -181,6 +183,7 @@ public class EventHubUtilsTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void instanceFromVCAPSThreading() throws Exception {
         final String VCAPS = System.getenv(VCAP_SERVICES);
         final String eventHubInstanceName = System.getenv(INSTANCE_NAME);
@@ -239,6 +242,7 @@ public class EventHubUtilsTest {
      *
      */
     @Test
+    @Category(SanityTest.class)
     public void testJSONMaker(){
         Ack a = Ack.newBuilder()
                 .setId("ack-id")
@@ -288,6 +292,7 @@ public class EventHubUtilsTest {
      * but it will at least run the code
      */
     @Test
+    @Category(SanityTest.class)
     public void testLogLevels(){
         LoggerConfiguration utilLoggingConfig = new LoggerConfiguration.Builder()
                 .logLevel(LoggerConfiguration.LogLevel.ALL)

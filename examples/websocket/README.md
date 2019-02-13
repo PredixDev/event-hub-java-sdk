@@ -29,5 +29,4 @@ body field of the json. Because of this, it is recommenced to put a json object 
 If the body filed contained a string, the surrounding " would be included in the message delivered to the
 subscriber. Tagging the message as a web socket publish can also be used to let the client know to un marshal it
 correctly.
-
-[![Analytics](https://ga-beacon.appspot.com/UA-82773213-1/predix-event-hub-sdk/readme?pixel)](https://github.com/PredixDev)
+[![Analytics](https://predix-beacon.appspot.com/UA-82773213-1/event-hub-java-sdk/readme?pixel)](https://github.com/PredixDev)

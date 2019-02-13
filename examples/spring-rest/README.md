@@ -1,7 +1,7 @@
 # Event Hub Sample App
 
 ## Prerequsites
-* Read up on the [Event Hub Java SDK](https://github.com/PredixDev/predix-event-hub-java-sdk)
+* Read up on the [Event Hub Java SDK](https://github.com/PredixDev/event-hub-java-sdk)
 * Create new Event Hub instance and necessary UAA instances ([Predix.io Documentation](https://www.predix.io/docs#qQ46G8jh))
 * Give UAA user correct scopes to publish/subscribe
 * Download and `mvn clean install` sample app
@@ -95,6 +95,21 @@ See Proxy section of the event hub skd readme.
 
   the messages in JSON from
 
+### Subscribe with Acks
+
+   _Get the messages along with acks for the messages from the eventhub sdk subscriber_
+
+* **URL**
+
+    /subscribe/ack
+
+* **Method:**
+
+    'GET'
+
+* **Response:**
+
+    the messages along with the acks corresponding to the messages in the form of a JSON array
 
 ## Change Log
 ### 1.0
@@ -107,4 +122,6 @@ See Proxy section of the event hub skd readme.
 * Added WebSocket Publish example
 * Modified the sample app to use best practices for subscribing
 
-[![Analytics](https://ga-beacon.appspot.com/UA-82773213-1/predix-event-hub-sdk/readme?pixel)](https://github.com/PredixDev)
+
+[![Analytics](https://predix-beacon.appspot.com/UA-82773213-1/event-hub-java-sdk/readme?pixel)](https://github.com/PredixDev)
+

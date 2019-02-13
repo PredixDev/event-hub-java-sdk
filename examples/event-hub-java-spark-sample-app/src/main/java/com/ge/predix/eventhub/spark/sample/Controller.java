@@ -21,10 +21,7 @@ import javax.annotation.PreDestroy;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -50,8 +47,13 @@ public class Controller {
         writer = new BufferedWriter(new FileWriter("messages.txt", true));
         conf = new SparkConf().setMaster("local").setAppName("Work Count App");
         sc = new JavaSparkContext(conf);
-        System.out.println("******************************* Using environment variables *******************************");
-        fromExplicit();
+        if(System.getenv("EVENTHUB_INSTANCE_NAME") != null && System.getenv("UAA_INSTANCE_NAME") != null) {
+            System.out.println("******************************* Using bound services *******************************");
+            fromEnv();
+        } else {
+            System.out.println("******************************* Using environment variables *******************************");
+            fromExplicit();
+        }
 
         class SubCallback implements Client.SubscribeCallback {
             @Override
@@ -83,8 +85,43 @@ public class Controller {
         JavaRDD<String> lines = sc.textFile("messages.txt");
         JavaPairRDD<String, Integer> pairs = lines.mapToPair(s -> new Tuple2<>(s,1));
         JavaPairRDD<String, Integer> counts = pairs.reduceByKey((a, b) -> a + b);
+        counts.foreach(data -> {
+            System.out.println("result" + data);
+        });
         counts.saveAsTextFile("output");
         sc.close();
+    }
+
+    /**
+     * Initialize the EventHubConfiguration Object
+     * As if it were in cloud foundry (Uses V_cap services)
+     * @throws EventHubClientException Exception occurred during creation
+     */
+    private void fromEnv() throws EventHubClientException {
+        try {
+            EventHubConfiguration configuration = new EventHubConfiguration.Builder()
+                    .fromEnvironmentVariables()
+                    .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC).build())
+                    .subscribeConfiguration(new SubscribeConfiguration.Builder().subscriberName(subscriberName).subscriberInstance(subscriberInstance).build())
+                    .build();
+
+            eventHub = new Client(configuration);
+            logger.info("** logging Client details **");
+            logger.info(configuration.getAuthURL());
+            logger.info(configuration.getClientID());
+            logger.info(configuration.getClientSecret());
+            logger.info(configuration.getHost());
+            logger.info(configuration.getZoneID());
+            logger.info(configuration.getPort() + "");
+            logger.info(configuration.isAutomaticTokenRenew() + "");
+            logger.info("** logging Client details **");
+            eventHub.forceRenewToken();
+            eventHubConfiguration = configuration;
+
+        } catch (EventHubClientException.InvalidConfigurationException e){
+            logger.info(e.getMessage());
+            System.out.println("Could not create client");
+        }
     }
 
 

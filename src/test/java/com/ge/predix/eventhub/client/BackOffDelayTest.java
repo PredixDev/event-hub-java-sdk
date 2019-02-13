@@ -1,11 +1,14 @@
 /*
-* Copyright (c) 2016 GE. All Rights Reserved.
-* GE Confidential: Restricted Internal Distribution
-*/
+ * Copyright (c) 2016 GE. All Rights Reserved.
+ * GE Confidential: Restricted Internal Distribution
+ */
 package com.ge.predix.eventhub.client;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -15,9 +18,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.ssl.SSLException;
 
 import org.junit.FixMethodOrder;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
@@ -28,32 +31,36 @@ import com.ge.predix.eventhub.EventHubLogger;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import com.ge.predix.eventhub.configuration.LoggerConfiguration;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
+import com.ge.predix.eventhub.test.categories.SanityTest;
 
 import io.grpc.Channel;
 import io.grpc.ClientInterceptors;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
-@Ignore
+
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class BackOffDelayTest {
     static EventHubLogger ehLogger = new EventHubLogger(BackOffDelay.class, LoggerConfiguration.defaultLogConfig());
     static class MockBackOffDelay extends BackOffDelay {
         private final int[] delayMillisecondsOverride = {10, 50, 100, 500, 3000, 5000}; // 10ms, 50ms, 100ms, 0.5s, 3s, 5s
 
-
         public MockBackOffDelay(ClientInterface client) {
             super(client, ehLogger);
-
-// Overriding timeouts for the test so it is faster
+            // Overriding timeouts for the test so it is faster
             delayMilliseconds = delayMillisecondsOverride;
             timeForReset = 30000L; // 30s
+        }
+
+        public  void setDelayMillisSeconds(int[] delayMillisecs,long reset) {
+            delayMilliseconds = delayMillisecs;
+            timeForReset = reset;
         }
     }
 
     static class MockSyncPublishClient extends SyncPublisherClient {
         public MockSyncPublishClient(Channel channel, ManagedChannel originChannel, EventHubConfiguration eventHubConfiguration) throws SSLException {
-//channel and client
+            //channel and client
 
             super(channel,  originChannel, eventHubConfiguration);
             backOffDelay = new MockBackOffDelay(this);
@@ -62,15 +69,15 @@ public class BackOffDelayTest {
 
     static class MockAsyncPublishClient extends AsyncPublishClient {
         public MockAsyncPublishClient(Channel channel, EventHubConfiguration eventHubConfiguration) {
-//channel and client
+            //channel and client
             super(channel, null, eventHubConfiguration);
             backOffDelay = new MockBackOffDelay(this);
         }
     }
 
     // This is used as a barebones PublishClient for us to capture createStream() being called by BackOffDelay
-// It records the number of times createStream() is called with reconnectStreamCount
-// It allows attemptReconnect() to be called after certain attempts with the array countsToReconnectOn
+    // It records the number of times createStream() is called with reconnectStreamCount
+    // It allows attemptReconnect() to be called after certain attempts with the array countsToReconnectOn
     class MockClient extends ClientInterface {
 
         private AtomicInteger reconnectStreamCount = new AtomicInteger(0);
@@ -83,36 +90,50 @@ public class BackOffDelayTest {
             this.reconnectStatusesFromEventHub = reconnectStatusesFromEventHub == null ? new ArrayList<Status>().iterator() : reconnectStatusesFromEventHub.iterator();
             this.backOffDelay = new MockBackOffDelay(this);
 
-// Make first status response from Event Hub
+            // Make first status response from Event Hub
             if (this.reconnectStatusesFromEventHub.hasNext()) {
                 this.onErrorStatusFromEventHub(this.reconnectStatusesFromEventHub.next());
             }
         }
 
+        public MockClient(ArrayList<Status> reconnectStatusesFromEventHub,int[] delayMillisecs,long reset,int clientRetries) throws EventHubClientException.ReconnectFailedException {
+            this.reconnectStatusesFromEventHub = reconnectStatusesFromEventHub == null ? new ArrayList<Status>().iterator() : reconnectStatusesFromEventHub.iterator();
+
+            this.backOffDelay = new MockBackOffDelay(this);
+            this.backOffDelay.setDelayMillisSeconds(delayMillisecs, reset);
+            this.backOffDelay.setRetryLimit(clientRetries);
+
+            // Make first status response from Event Hub
+            if (this.reconnectStatusesFromEventHub.hasNext()) {
+                this.onErrorStatusFromEventHub(this.reconnectStatusesFromEventHub.next());
+            }
+        }
+
+
         // This mocks any errors that would arrive from Event Hub (we only care about the status)
         public int onErrorStatusFromEventHub(Status status) throws EventHubClientException.ReconnectFailedException {
-// Use status to initiate a reconnect and store the delay time in array
+            // Use status to initiate a reconnect and store the delay time in array
             int delay = this.backOffDelay.initiateReconnect(status);
             this.backOffTimeDelays.add(delay);
             return delay;
         }
 
         // This mocks the Client method that eventually gets called from BackoffDelay
-// Check iterator to see if we should simulate a response from Event Hub
+        // Check iterator to see if we should simulate a response from Event Hub
         protected synchronized void reconnectStream(String cause) {
             this.reconnectStreamCount.incrementAndGet();
 
             if (this.reconnectStatusesFromEventHub.hasNext()) {
                 Status status = this.reconnectStatusesFromEventHub.next();
-//System.out.println("Event Hub onFailure will be called with " + status.getCode());
+                //System.out.println("Event Hub onFailure will be called with " + status.getCode());
                 try {
                     this.onErrorStatusFromEventHub(status);
                 } catch (EventHubClientException.ReconnectFailedException e) {
-//The MockClient does not have a callback to call onFailure (we have this outside of tests)
-//System.out.println("In reconnectStream " + e.getLocalizedMessage());
+                    //The MockClient does not have a callback to call onFailure (we have this outside of tests)
+                    //System.out.println("In reconnectStream " + e.getLocalizedMessage());
                 }
             } else {
-//          System.out.println("No more statuses from Event Hub ... reconnection simulated to be successful");
+                //          System.out.println("No more statuses from Event Hub ... reconnection simulated to be successful");
             }
         }
 
@@ -152,12 +173,12 @@ public class BackOffDelayTest {
 
     // Get a timeout we should wait so that all the retries would have finished
     static long calculatePause(BackOffDelay backOffDelay, int startIndex, int numberOfDelays) {
-// Wait for how long the above timeouts should take
+        // Wait for how long the above timeouts should take
         Long waitFor = 0L;
         for (int i = 0; i < numberOfDelays; i++) {
             waitFor += backOffDelay.getDelay(i + startIndex);
         }
-// Augment waitFor by the max jitter since the total timeout could be more than the simple sum of the array
+        // Augment waitFor by the max jitter since the total timeout could be more than the simple sum of the array
         Double jitterTimes100 = backOffDelay.maxJitterFactor * 100;  // maxJitter is a decimal percentage ...
         return waitFor + (waitFor * jitterTimes100.longValue()) / 100;   // total + percentage defined by jitter
     }
@@ -177,15 +198,36 @@ public class BackOffDelayTest {
         }
     };
 
+    private void checkForLimitedRetriesErrorCodes(Status code) throws EventHubClientException.ReconnectFailedException{
+        ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
+        statusResponseFromEventHub.add(code);   // 1st response that sets retryLimit and delay index bumped up
+        statusResponseFromEventHub.add(code);
+        statusResponseFromEventHub.add(code);
+        statusResponseFromEventHub.add(code);   // 4th call will trigger an error to Client but that will not reach reconnect
+
+        MockClient client = new MockClient(statusResponseFromEventHub);
+
+        pause((long) client.backOffDelay.delayMilliseconds[client.backOffDelay.limitedRetryLimit] * 4);
+
+        try {
+            client.onErrorStatusFromEventHub(code);
+        } catch (EventHubClientException.ReconnectFailedException e) {
+            pause(100L);
+            // getBackOffTimeDelays.size() will be 3 since on the fourth try an error is thrown
+            assertEquals(statusResponseFromEventHub.size(), client.getBackOffTimeDelays().size() + 1);
+            assertEquals(client.backOffDelay.limitedRetryLimit, client.getReconnectStreamCount());
+        }
+    }
+
     @Test
-// If attempt number is over length of array, getDelay() should wrap around (aka mod length)
+    // If attempt number is over length of array, getDelay() should wrap around (aka mod length)
     public void getDelayWrapAround() throws EventHubClientException {
         BackOffDelay backOffDelay = new BackOffDelay(new MockClient(new ArrayList<>()), ehLogger);
         assertEquals(BackOffDelay.delayMilliseconds[0], backOffDelay.getDelay(BackOffDelay.delayMilliseconds.length));
     }
 
     @Test
-// Reconnect multiple times
+    // Reconnect multiple times
     public void multipleReconnect() throws SSLException, EventHubClientException {
         ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
         statusResponseFromEventHub.add(Status.UNAVAILABLE);   // 1st response from Event Hub
@@ -196,25 +238,82 @@ public class BackOffDelayTest {
         statusResponseFromEventHub.add(Status.UNAVAILABLE);   // 6th reconnect (should be last delay in MockBackOffDelay)
         statusResponseFromEventHub.add(Status.UNAVAILABLE);   // 7th reconnect should have the same delay as the 1st
         statusResponseFromEventHub.add(Status.UNAVAILABLE);   // 8th reconnect should have the same delay as the 1st
-        statusResponseFromEventHub.add(Status.UNAVAILABLE);   // ...
-
+        statusResponseFromEventHub.add(Status.UNAVAILABLE);  // ..
         MockClient client = new MockClient(statusResponseFromEventHub);
 
         pause(calculatePause(client.backOffDelay, 0, statusResponseFromEventHub.size()));
 
-// Get delays which were used
+        // Get delays which were used
         ArrayList<Integer> delays = client.getBackOffTimeDelays();
 
-// Make sure time delays jitters are within expected range
+        // Make sure time delays jitters are within expected range
         for (int i = 0; i < delays.size(); i++) {
-// Ensure that we read either the correct index since the delays wrap around
+            // Ensure that we read either the correct index since the delays wrap around
             Double jitterFactor = calculateJitter(client.backOffDelay, i, delays.get(i));
             assertThat(BackOffDelay.maxJitterFactor, greaterThanOrEqualTo(jitterFactor));
         }
+
+
+
     }
 
     @Test
-// If reconnect request made during another request, it should be ignored
+    public void reconnectClientSpecifiedRetries() throws SSLException, EventHubClientException {
+        ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
+        for(int i = 0;i<=12;i++) {
+            statusResponseFromEventHub.add(Status.UNAVAILABLE);   // 1st response from Event Hub and so on
+        }
+
+        int[] delayMilliseconds =  new int[]{1000, 3000, 5000, 8000};
+        int clientRetries = 12;
+        long reset = 60000;
+        MockClient client = new MockClient(statusResponseFromEventHub,delayMilliseconds,reset,clientRetries);
+
+
+        pause(calculatePause(client.backOffDelay, 0, statusResponseFromEventHub.size()));
+
+        // Get delays which were used
+        ArrayList<Integer> delays = client.getBackOffTimeDelays();
+
+        // Make sure time delays jitters are within expected range
+        for (int i = 0; i < delays.size(); i++) {
+            // Ensure that we read either the correct index since the delays wrap around
+            Double jitterFactor = calculateJitter(client.backOffDelay, i, delays.get(i));
+            assertThat(BackOffDelay.maxJitterFactor, greaterThanOrEqualTo(jitterFactor));
+        }
+
+        assertEquals(clientRetries,client.backOffDelay.attempt.get());
+    }
+
+    @Test
+    public void reconnectClientWithLessRetriesThanDefault() throws SSLException, EventHubClientException {
+        ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
+        for(int i = 0;i<=12;i++) {
+            statusResponseFromEventHub.add(Status.UNAVAILABLE);   // 1st response from Event Hub and so on
+        }
+
+        int[] delayMilliseconds =  new int[]{1000, 3000, 5000, 8000};
+        int clientRetries = 4;
+        long reset = 60000;
+        MockClient client = new MockClient(statusResponseFromEventHub,delayMilliseconds,reset,clientRetries);
+        pause(calculatePause(client.backOffDelay, 0, statusResponseFromEventHub.size()));
+
+        // Get delays which were used
+        ArrayList<Integer> delays = client.getBackOffTimeDelays();
+
+        // Make sure time delays jitters are within expected range
+        for (int i = 0; i < delays.size(); i++) {
+            // Ensure that we read either the correct index since the delays wrap around
+            Double jitterFactor = calculateJitter(client.backOffDelay, i, delays.get(i));
+            assertThat(BackOffDelay.maxJitterFactor, greaterThanOrEqualTo(jitterFactor));
+        }
+
+        assertEquals(clientRetries,client.backOffDelay.attempt.get());
+
+    }
+
+    @Test
+    // If reconnect request made during another request, it should be ignored
     public void ignoreReconnect() throws SSLException, EventHubClientException {
 
         ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
@@ -223,7 +322,7 @@ public class BackOffDelayTest {
 
         pause(200L);
 
-// Force call reconnect twice back to back
+        // Force call reconnect twice back to back
         int secondRetryDelay = client.onErrorStatusFromEventHub(Status.UNAVAILABLE);  // Trigger 2nd
         int thirdRetryDelay = client.onErrorStatusFromEventHub(Status.UNAVAILABLE);  // Trigger 3rd but should fail since it was called during past reconnect
 
@@ -234,7 +333,7 @@ public class BackOffDelayTest {
     }
 
     @Test
-// If it has been longer than the timeout since last reconnect, reset the attempt index
+    // If it has been longer than the timeout since last reconnect, reset the attempt index
     public void resetAttemptAfterTimeout() throws SSLException, EventHubClientException {
         ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
         statusResponseFromEventHub.add(Status.UNAVAILABLE); // Trigger retry
@@ -258,32 +357,32 @@ public class BackOffDelayTest {
     }
 
     @Test
-// Retry initially null, takes on int value when assign if it was null
-// Ignores new assignments if not null
-// Can be reset if last retryLimit was set more than time delay
+    // Retry initially null, takes on int value when assign if it was null
+    // Ignores new assignments if not null
+    // Can be reset if last retryLimit was set more than time delay
     public void retryLimit() throws EventHubClientException.ReconnectFailedException {
         MockClient client = new MockClient(null);
-        assertEquals(null, client.backOffDelay.retryLimit);
+        assertEquals(client.backOffDelay.delayMilliseconds.length*2, client.backOffDelay.getClientMaxRetries());
 
-// Set limit
+        // Set limit
         int limit = 5;
         client.backOffDelay.setRetryLimit(limit);
-        assertEquals(limit, client.backOffDelay.retryLimit.get());
+        assertEquals(limit, client.backOffDelay.getClientMaxRetries());
 
-// Tries to set limit again (should not work)
+        // Tries to set limit again (should be allowed )
         int newLimit = 7;
         client.backOffDelay.setRetryLimit(newLimit);
-        assertEquals(limit, client.backOffDelay.retryLimit.get());
+        assertEquals(newLimit, client.backOffDelay.getClientMaxRetries());
 
-// Wait to set limit again
+        // Wait to set limit again
         pause(client.backOffDelay.timeForReset + 100L);
 
-// Tries to set NEW limit again (using a even higher limit to prove that the timeout function works)
+        // Tries to set NEW limit again (using a even higher limit to prove that the timeout function works)
         int newerLimit = 20;
         client.backOffDelay.setRetryLimit(newerLimit);
-        assertEquals(newerLimit, client.backOffDelay.retryLimit.get());
+        assertEquals(newerLimit, client.backOffDelay.getClientMaxRetries());
 
-// Remove delay
+        // Remove delay
         client.backOffDelay.removeRetryLimit();
         assertEquals(null, client.backOffDelay.retryLimit);
 
@@ -295,12 +394,12 @@ public class BackOffDelayTest {
         ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
         statusResponseFromEventHub.add(Status.UNKNOWN);   // 1st response that sets retryLimit and delay index bumped up
 
-// Add up to max retryLimit (the 1st retry is included in limit)
+        // Add up to max retryLimit (the 1st retry is included in limit)
         for (int i = 0; i < MockBackOffDelay.limitedRetryLimit - 1; i++) {
             statusResponseFromEventHub.add(Status.UNKNOWN);
         }
 
-// Add a couple retries but should not go through since it is over the limit
+        // Add a couple retries but should not go through since it is over the limit
         statusResponseFromEventHub.add(Status.UNKNOWN); // This should not trigger reconnectStream
         statusResponseFromEventHub.add(Status.UNKNOWN); // This should never even be triggered
 
@@ -316,7 +415,7 @@ public class BackOffDelayTest {
     }
 
     @Test
-// If there is an error that does not set retryLimit, it should reset limit (since it is a new error)
+    // If there is an error that does not set retryLimit, it should reset limit (since it is a new error)
     public void retryLimitReset() throws EventHubClientException.ReconnectFailedException {
         ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
         statusResponseFromEventHub.add(Status.UNKNOWN);   // 1st response that sets retryLimit and delay index bumped up
@@ -327,7 +426,7 @@ public class BackOffDelayTest {
         pause(calculatePause(client.backOffDelay, client.backOffDelay.midLengthDelayIndex, statusResponseFromEventHub.size()));
         assertEquals(client.backOffDelay.limitedRetryLimit - 2, client.backOffDelay.retryLimit.get());  // Make sure retryLimit is being used
 
-//  This should reset retryLimit
+        //  This should reset retryLimit
         client.backOffDelay.removeRetryLimit();
 
         pause((long) client.backOffDelay.delayMilliseconds[2]);
@@ -336,7 +435,7 @@ public class BackOffDelayTest {
     }
 
     @Test
-// Specify index
+    // Specify index
     public void specifyIndex() throws EventHubClientException.ReconnectFailedException {
         MockClient client = new MockClient(null);
         int index = 3;
@@ -350,7 +449,7 @@ public class BackOffDelayTest {
      */
 
     @Test
-// Should do nothing
+    // Should do nothing
     public void status_CANCELLED() throws EventHubClientException.ReconnectFailedException {
         MockClient client = new MockClient(null);
         client.onErrorStatusFromEventHub(Status.CANCELLED);
@@ -360,27 +459,11 @@ public class BackOffDelayTest {
         assertEquals(0, client.getReconnectStreamCount());   // Ensure client's reconnect did not get called
     }
 
+
     @Test
-// Should stop after x amount of tries
+    // Should stop after x amount of tries
     public void status_UNKNOWN() throws EventHubClientException.ReconnectFailedException {
-        ArrayList<Status> statusResponseFromEventHub = new ArrayList<Status>();
-        statusResponseFromEventHub.add(Status.UNKNOWN);   // 1st response that sets retryLimit and delay index bumped up
-        statusResponseFromEventHub.add(Status.UNKNOWN);
-        statusResponseFromEventHub.add(Status.UNKNOWN);
-        statusResponseFromEventHub.add(Status.UNKNOWN);   // 4th call will trigger an error to Client but that will not reach reconnect
-
-        MockClient client = new MockClient(statusResponseFromEventHub);
-
-        pause((long) client.backOffDelay.delayMilliseconds[client.backOffDelay.limitedRetryLimit] * 4);
-
-        try {
-            client.onErrorStatusFromEventHub(Status.UNKNOWN);
-        } catch (EventHubClientException.ReconnectFailedException e) {
-            pause(100L);
-// getBackOffTimeDelays.size() will be 3 since on the fourth try an error is thrown
-            assertEquals(statusResponseFromEventHub.size(), client.getBackOffTimeDelays().size() + 1);
-            assertEquals(client.backOffDelay.limitedRetryLimit, client.getReconnectStreamCount());
-        }
+        checkForLimitedRetriesErrorCodes(Status.UNKNOWN);
     }
 
     public void checkStatusForMaxRetries(Status status) throws EventHubClientException.ReconnectFailedException {
@@ -402,25 +485,25 @@ public class BackOffDelayTest {
     }
 
     @Test
-// Should keep trying indefinitely
+    // Should keep trying indefinitely
     public void status_UNAVAILABLE() throws EventHubClientException.ReconnectFailedException {
         checkStatusForMaxRetries(Status.UNAVAILABLE);
     }
 
     @Test
-// Should keep trying indefinitely
+    // Should keep trying indefinitely
     public void status_UNAUTHENTICATED() throws EventHubClientException.ReconnectFailedException {
-        checkStatusForMaxRetries(Status.UNAUTHENTICATED);
+        checkForLimitedRetriesErrorCodes(Status.UNAUTHENTICATED);
     }
 
     @Test
-// Should keep trying indefinitely
+    // Should keep trying indefinitely
     public void status_INTERNAL() throws EventHubClientException.ReconnectFailedException {
         checkStatusForMaxRetries(Status.INTERNAL);
     }
 
     @Test
-// If two initiateReconnects are called and the error codes produce the same result, one will win
+    // If two initiateReconnects are called and the error codes produce the same result, one will win
     public void threadingSameStatus() throws InterruptedException, EventHubClientException.ReconnectFailedException {
         final MockClient client = new MockClient(null);
 
@@ -453,7 +536,7 @@ public class BackOffDelayTest {
     }
 
     @Test
-// Make sure jitter is correct
+    // Make sure jitter is correct
     public void testJitter() throws EventHubClientException.ReconnectFailedException {
         int[] timeout = {300, 100000, 10};
         double[] factor = {0.5, 0.01, 0.1};
@@ -470,7 +553,7 @@ public class BackOffDelayTest {
     }
 
     @Test
-// Make sure setRetryLimit can only be initially set once
+    // Make sure setRetryLimit can only be initially set once
     public void testSetRetryLimit() throws InterruptedException, EventHubClientException.ReconnectFailedException {
         final MockClient client = new MockClient(null);
         final int retryLimit = 5;
@@ -507,28 +590,28 @@ public class BackOffDelayTest {
         thread1.join();
         thread2.join();
 
-        assertEquals(retryLimit, client.backOffDelay.retryLimit.get());
+        assertEquals(retryLimit, client.backOffDelay.getClientMaxRetries());
         pause(30000L);  // Wait for reset timeout
 
         client.backOffDelay.setRetryLimit(retryLimit + 1);
-        assertEquals(retryLimit + 1, client.backOffDelay.retryLimit.get());
+        assertEquals(retryLimit + 1, client.backOffDelay.getClientMaxRetries());
 
     }
 
     @Test
-// Make sure that a smaller retryLimit can override a larger retryLimit
+    // Make sure that a smaller retryLimit can override a larger retryLimit
     public void smallerRetryLimit() throws EventHubClientException.ReconnectFailedException {
         MockClient client = new MockClient(null);
         client.backOffDelay.setRetryLimit(10);
-        assertEquals(10, client.backOffDelay.retryLimit.get());
+        assertEquals(10, client.backOffDelay.getClientMaxRetries());
 
-// Larger limit
+        // Larger limit
         client.backOffDelay.setRetryLimit(11);
-        assertEquals(10, client.backOffDelay.retryLimit.get());
+        assertEquals(11, client.backOffDelay.getClientMaxRetries());
 
-// Smaller limit
+        // Smaller limit
         client.backOffDelay.setRetryLimit(2);
-        assertEquals(2, client.backOffDelay.retryLimit.get());
+        assertEquals(2, client.backOffDelay.getClientMaxRetries());
     }
 
     @Test
@@ -541,7 +624,7 @@ public class BackOffDelayTest {
 
         MockClient mockClient = new MockClient(null);
 
-//create bad channel
+        //create bad channel
         Client syncClient = new Client(eventHubConfiguration);
 
         ChannelTuple channelTuple = buildNonWorkingChannel(eventHubConfiguration, syncClient);
@@ -550,16 +633,16 @@ public class BackOffDelayTest {
 
         syncClient.publishClient = mockSyncPublishClient;
 
-//Send first invalid message, then wait for reconnect to fail
+        //Send first invalid message, then wait for reconnect to fail
         syncClient.addMessage("id", "message", null);
         try{
-             syncClient.flush();
+            syncClient.flush();
         }catch (EventHubClientException.SyncPublisherFlushException ignore){
 
         }
         pause(5000L);
 
-//This call should trigger the reconnect failure exception
+        //This call should trigger the reconnect failure exception
         syncClient.addMessage("id", "message", null);
         EventHubClientException.SyncPublisherFlushException e = null;
         try {
@@ -572,8 +655,8 @@ public class BackOffDelayTest {
         for(Throwable t : e.getThrowables()){
             if(t instanceof  EventHubClientException.ReconnectFailedException){
                 foundReconnect= true;
+            }
         }
-    }
         assertTrue(foundReconnect);
         channelTuple.managedChannel.shutdownNow();
     }
@@ -590,8 +673,48 @@ public class BackOffDelayTest {
         mockSyncPublishClient.backOffDelay = backOffDelay;
         return mockSyncPublishClient;
 
-        
+
     }
+
+    @Test
+    @Category(SanityTest.class)
+    public void negativeTestReconnectRetryLimit() throws EventHubClientException {
+
+        int reconnectRetryLimit = -1;
+        Throwable t = null;
+        EventHubConfiguration.Builder builder = new EventHubConfiguration.Builder();
+
+        try {
+            EventHubConfiguration eventHubConfiguration = builder.reconnectRetryLimit(reconnectRetryLimit).build();
+        }
+        catch(Exception e) {
+            if(e instanceof EventHubClientException.InvalidConfigurationException) {
+                t = e;
+            }
+        }
+
+        assertNotNull(t);
+        assertTrue(t.getMessage().contains("reconnectRetryLimit not set"));
+
+        t = null;
+        reconnectRetryLimit = 0;
+
+        try {
+            EventHubConfiguration eventHubConfiguration = builder.reconnectRetryLimit(reconnectRetryLimit).build();
+        }
+        catch(Exception e) {
+            if(e instanceof EventHubClientException.InvalidConfigurationException) {
+                t = e;
+            }
+        }
+
+        assertNotNull(t);
+        assertTrue(t.getMessage().contains("reconnectRetryLimit not set"));
+
+
+
+    }
+
 
 
     private ChannelTuple buildNonWorkingChannel(EventHubConfiguration eventHubConfiguration, Client syncClient) throws SSLException {

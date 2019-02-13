@@ -1,31 +1,25 @@
 package com.ge.predix.eventhub.client;
 
-import static com.ge.predix.eventhub.client.utils.TestUtils.buildAndSendMessages;
-import static com.ge.predix.eventhub.client.utils.TestUtils.createRandomString;
+import com.ge.predix.eventhub.*;
+import com.ge.predix.eventhub.client.utils.TestUtils;
+import com.ge.predix.eventhub.configuration.EventHubConfiguration;
+import com.ge.predix.eventhub.configuration.PublishConfiguration;
+import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
+import org.junit.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import com.ge.predix.eventhub.EventHubClientException;
-import com.ge.predix.eventhub.EventHubUtils;
-import com.ge.predix.eventhub.client.utils.TestUtils;
-import com.ge.predix.eventhub.configuration.EventHubConfiguration;
-import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
-import com.ge.predix.eventhub.stub.Message;
+import static com.ge.predix.eventhub.client.utils.TestUtils.buildAndSendMessages;
+import static com.ge.predix.eventhub.client.utils.TestUtils.createRandomString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Created by williamgowell on 10/3/17.

@@ -1,0 +1,79 @@
+version: '2'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka:0.10.2.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: "kafka"
+      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_CREATE_TOPICS: "895632a4-078b-493f-bd0d-44d727eae7f4_NewTopic1:1:1,895632a4-078b-493f-bd0d-44d727eae7f4_NewTopic2:1:1,895632a4-078b-493f-bd0d-44d727eae7f4_NewTopic3:1:1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+          - zookeeper
+  eventhub:
+    image: dtr.predix.io/dataservices-beta/predix-event-hub:latest
+    container_name: eventhub
+    ports:
+      - "8080:8080"
+    depends_on:
+          - zookeeper
+          - kafka
+    environment:
+      HTTP_PROXY: ${HTTP_PROXY}
+      http_proxy: ${http_proxy}
+      HTTPS_PROXY: ${HTTPS_PROXY}
+      https_proxy: ${https_proxy}
+      KAFKA_URI: kafka:9092
+      ZOOKEEPER_URI: zookeeper:2181
+      PORT: 8080
+      AUTH_URL: https://predix-uaa.run.aws-usw02-dev.ice.predix.io
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
+      ZAC_URL: "https://predix-zac.run.aws-usw02-dev.ice.predix.io"
+      ZAC_SERVICE_NAME: predix-event-hub
+      PAYMENT_AUTH_URI: https://31f8ed21-2635-4e26-bb6d-86fb755856e4.predix-uaa.run.aws-usw02-dev.ice.predix.io
+      PAYMENT_ZONE_ID: eb20bbe1-9b7f-4d84-9d51-d084d6a2f04c
+      PAYMENT_AUTH_CLIENT: ${PAYMENT_AUTH_CLIENT}
+      PAYMENT_AUTH_SECRET: ${PAYMENT_AUTH_SECRET}
+      ENABLE_MQTT: "false"
+      RUN_EVENTHUB: "true"
+      ENABLE_TLS: "false"
+      ENABLE_DEBUG: "true"
+      ENABLE_DEVMODE: "true"
+      CERT_CA_FILE: "/opt/event_hub/certs/cert.pem"
+      CERT_FILE: "/opt/event_hub/certs/my-root-ca.crt.pem"
+      CERT_KEY_FILE: "/opt/event_hub/certs/my-root-ca.key.pem"
+      ENABLE_MULTITOPIC: "true"
+      METRIC_REPORT_INTERVAL: "60m"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  eventhubsdktest:
+    build: .
+    depends_on:
+      - eventhub
+    working_dir: /app
+    environment:
+      SDK_CLIENT_ID: ${SKD_TEST_UAA_CLIENT_ID}
+      SDK_CLIENT_SECRET: ${SKD_TEST_UAA_CLIENT_SECRET}
+      UAA_AUTH_URL: "https://eae5334b-96d8-4825-bfa2-27997234695e.predix-uaa.run.aws-usw02-dev.ice.predix.io/oauth/token"
+      EVENTHUB_URI: "eventhub"
+      EVENTHUB_PORT: 8080
+      EVENTHUB_ZONEID: "895632a4-078b-493f-bd0d-44d727eae7f4"
+      EVENTHUB_ZONEID_WILDCARD: "a12ef02b-f51e-47de-87ac-9d3960c5cf9e"
+      ENABLE_TLS: "false"
+      TEST_COMMAND: "*"
+
+    volumes:
+      - ./../.:/app
+      - /var/run/docker.sock:/var/run/docker.sock

@@ -1,10 +1,3 @@
-<a href="http://predixdev.github.io/predix-event-hub-sdk/javadocs/index.html" target="_blank" >
-	<img height="50px" width="100px" src="images/javadoc.png" alt="view javadoc"></a>
-&nbsp;
-<a href="http://predixdev.github.io/predix-event-hub-sdk" target="_blank">
-	<img height="50px" width="100px" src="images/pages.jpg" alt="view github pages">
-</a>
-
 # Event Hub SDK for Java
 Event Hub SDK is a library that helps connect an application to [Event Hub](https://www.predix.io/services/service.html?id=1987)
 
@@ -20,6 +13,7 @@ Event Hub SDK is a library that helps connect an application to [Event Hub](http
  - [Debugging](#debugging)
  - [Building SDK from repository](#building-sdk-from-repository)
  - [Common Issues](#building-sdk-from-repository)
+ - [Running Tests](#running-tests)
 
 ## SDK from Artifactory
 The most simple way to use this SDK is to pull from the Predix Snapshot artifactory repository. Add the following to your pom file:
@@ -30,7 +24,7 @@ The most simple way to use this SDK is to pull from the Predix Snapshot artifact
   <dependency>
     <groupId>com.ge.predix.eventhub</groupId>
     <artifactId>predix-event-hub-sdk</artifactId>
-    <version>2.0.7</version>
+    <version>2.2.4</version>
   </dependency>
 ...
 </dependencies>
@@ -502,12 +496,30 @@ You can resubscribe to rebuild the stream.
 
 #### Multiple Subscribers
 
-Only one subscription per `subscriberName` can be made. 
-
 Event Hub will send each unique `subscriberName` or subscription all stored messages. If there are multiple clients 
 per `subscriberName` (max of five) those clients will collectively receive all the messages. That is, the stored 
 messages will be divided and load balanced among the clients for that `subscriberName`. Note that this can be used to
 increase the speed at which messages are retrieved from EventHub for a subscription.
+
+#### Multiple Topics
+
+Event Hub allows users to subscribe to multiple topics. This allows a single subscription to consume all messages published
+across default and custom topics associated with their respective zone ID.
+
+```java
+//Provide the names of the topic.
+String topicSuffix1 = "NewTopic1";
+String topicSuffix2 = "NewTopic2";
+
+List<String> topicSuffixes = new ArrayList<String>();
+topicSuffixes.add(topicSuffix1);
+topicSuffixes.add(topicSuffix2);
+
+EventHubConfiguration configuration_all_topics_subscribe = new EventHubConfiguration.Builder()
+        .fromEnvironmentVariables()
+        .subscribeConfiguration(new SubscribeConfiguration.Builder()
+                .topics(topicSuffixes) //Note the topics(List) vs topic(String)
+```
 
 ## Logging
 The Event hub sdk offers the ability to configure logging though a
@@ -614,7 +626,7 @@ where `string` is all the scopes comma separated. The following are the scopes t
 | predix-event-hub.zones.`<zoneID>`.grpc.publish | Required to publish to default topic
 | predix-event-hub.zones.`<zoneID>`.grpc.subscribe | Required to subscribe to default topic
 | predix-event-hub.zones.`<zoneID>`.`<subTopic>`.grpc.subscribe | Required to subscribe to a subtopic topic
-| predix-event-hub.zones.`<zoneID>`.`<subTopic>`.grpc.publish | Required to publish to a subtiouc topic
+| predix-event-hub.zones.`<zoneID>`.`<subTopic>`.grpc.publish | Required to publish to a subtopic topic
 
 Note: if you are a user of the Power VPC then you need to replace the scope prefix, predix-event-hub, with event-hub-power
 
@@ -672,10 +684,11 @@ The following dependency needs to be added *first* of the dependencies
 in the pom.xml of the project using the Java SDK.
 
 ```xml
+
 <dependency>
    <groupId>io.netty</groupId>
    <artifactId>netty-tcnative-boringssl-static</artifactId>
-   <version>2.0.5.Final</version>
+   <version>2.0.7.Final</version>
 </dependency>
 
 <repositories>
@@ -686,7 +699,7 @@ in the pom.xml of the project using the Java SDK.
 </repositories>
 ```
 ### Best Practices
-See [this](https://github.com/PredixDev/predix-event-hub-java-sdk/tree/develop/examples) for sample apps, examples, and step-by-step guides on best practices.
+See [this](https://github.com/PredixDev/event-hub-java-sample-app) for sample apps, examples, and step-by-step guides on best practices.
 ### FAQ
 1. What is latest stable version of EventHub SDK?
 	- v1.2.11 can be used in production now. v2.X.X is also available, but is being reviewed for public release (you can still use it if you're not planning to be in production)
@@ -780,5 +793,9 @@ See [this](https://github.com/PredixDev/predix-event-hub-java-sdk/tree/develop/e
 |                                                       | 11. Error or unable finding instance
 | EventHubClientException.PublishFailureException       | 1. Publish failed
 
+## Running Tests
+Please refer [Here](./LAUNCHTEST_README.md)
 
-[![Analytics](https://ga-beacon.appspot.com/UA-82773213-1/predix-event-hub-sdk/readme?pixel)](https://github.com/PredixDev)
+[![Analytics](https://predix-beacon.appspot.com/UA-82773213-1/event-hub-java-sdk/readme?pixel)](https://github.com/PredixDev)
+ 
+

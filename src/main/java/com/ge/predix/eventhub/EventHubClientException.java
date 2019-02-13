@@ -7,8 +7,6 @@ package com.ge.predix.eventhub;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.ge.predix.eventhub.stub.Ack;
-
 /**
  * Class for dealing with exceptions within the Event Hub SDK
  * Also contains subclasses for more specific exceptions

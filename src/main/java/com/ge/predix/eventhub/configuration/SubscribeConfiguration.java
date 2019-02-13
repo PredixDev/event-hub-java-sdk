@@ -5,8 +5,8 @@ package com.ge.predix.eventhub.configuration;/*
 
 import com.ge.predix.eventhub.EventHubClientException;
 import com.ge.predix.eventhub.EventHubUtils;
+import com.ge.predix.eventhub.client.Client;
 
-import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,13 +15,18 @@ public class SubscribeConfiguration {
     private String subscriberInstance;
     private int batchSize;
     private int batchInterval;
+    private BatchType batchType;
     private boolean batchingEnabled;
     private boolean acksEnabled;
+    private boolean metricsEnabled;
+    private int metricsInterval;
+    private Client.MetricsCallBack metricsCallback;
 
     private int maxRetries;
     private int retryInterval;
     private int durationBeforeFirstRetry;
     private SubscribeRecency subscribeRecency;
+
     private List<String> topics;
 
     public enum SubscribeRecency {
@@ -43,7 +48,8 @@ public class SubscribeConfiguration {
     public enum SubscribeStreamType {
         STANDARD("Standard"), // default behavior
         ACK("Ack Only"), //
-        BATCH("Batch"); //
+        BATCH("Batch"), //
+        METRICS("Metrics"); //
 
         private final String text;
 
@@ -56,6 +62,25 @@ public class SubscribeConfiguration {
             return text;
         }
     }
+
+    public enum BatchType {
+        UNION("Union"), // default behavior
+        INTERSECTION("Intersection");
+
+        private final String text;
+
+        private BatchType(final String text) {
+            this.text = text;
+        }
+
+        @Override
+        public String toString() {
+            return text;
+        }
+    }
+
+
+
     /**
      * Return topics subscribing to
      *
@@ -73,11 +98,22 @@ public class SubscribeConfiguration {
     }
 
     /**
-     * @return number of messages received per request
+     * @return whether batching api is enabled or not
      */
     public boolean isBatchingEnabled(){
         return batchingEnabled;
     }
+
+    /**
+     * @return whether metrics api is enabled or not
+     */
+    public boolean isMetricsEnabled(){
+        return metricsEnabled;
+    }
+
+    /**
+     * @return number of messages received per request
+     */
 
     public int getBatchSize() {
         return batchSize;
@@ -89,6 +125,24 @@ public class SubscribeConfiguration {
     public int getBatchInterval() {
         return batchInterval;
     }
+
+
+    /**
+     * The interval to get metrics messages in minutes
+     * @return
+     */
+    public int getMetricsInterval() {
+        return metricsInterval;
+    }
+
+    /**
+     *  returns the metrics callback registered
+     * @return
+     */
+    public Client.MetricsCallBack getMetricsCallback(){
+        return metricsCallback;
+    }
+
 
     /**
      * @return Whether acks are enabled
@@ -132,16 +186,31 @@ public class SubscribeConfiguration {
         return subscribeRecency;
     }
 
+    /**
+     * @return The subscription batch type for this client
+     */
+    public BatchType getBatchType() {
+        return batchType;
+    }
+
     public static class Builder {
         //Required for all types of subscriptions
         private String subscriberName = "default-subscriber-name";
         private String subscriberInstance = "default-subscriber-id";
         private SubscribeRecency subscribeRecency = SubscribeRecency.OLDEST;
+        private BatchType batchType = BatchType.INTERSECTION;
+
 
         //batching
         private boolean batchingEnabled = false;
         private int batchSize = 500;
         private int batchInterval = 100;
+
+
+        //metrics
+        private boolean metricsEnabled = false;
+        private int metricsInterval = 5 ;
+        private Client.MetricsCallBack metricsCallback;
 
         //TODO: Error Checking for these fields
         private int maxRetries = 5;
@@ -215,8 +284,10 @@ public class SubscribeConfiguration {
          */
         public Builder batchingEnabled(boolean batchingEnabled){
             this.batchingEnabled = batchingEnabled;
+            this.batchType = BatchType.INTERSECTION;
             return this;
         }
+
 
         /**
          * Configures the number of milliseconds to wait between receiving batches of messages.
@@ -231,6 +302,49 @@ public class SubscribeConfiguration {
             this.batchInterval = batchInterval;
             return this;
         }
+
+
+        /**
+         *
+         * @param metricsEnabled
+         * @return
+         */
+        public Builder metricsEnabled(boolean metricsEnabled){
+            this.metricsEnabled = metricsEnabled;
+            if (this.batchingEnabled == false ){
+                this.batchType = BatchType.UNION;
+            }
+            return this;
+        }
+
+
+        /**
+         *  Configures the number of interval in minutes to get the metric messages.
+         * Range between 1m and 60m. Default is 5m
+         * @param metricsInterval
+         * @return
+         * @throws EventHubClientException.InvalidConfigurationException
+         */
+        public Builder metricsIntervalMinutes(int metricsInterval) throws EventHubClientException.InvalidConfigurationException {
+            if (metricsInterval < 1 || metricsInterval > 60) {
+                throw new EventHubClientException.InvalidConfigurationException("metrics interval must be between 1m and 60m");
+            }
+            this.metricsInterval = metricsInterval;
+            return this;
+        }
+
+
+        /**
+         *
+         * @param metricsCallback
+         * @return
+         * @throws EventHubClientException.InvalidConfigurationException
+         */
+        public Builder metricsCallBack(Client.MetricsCallBack metricsCallback) throws EventHubClientException.InvalidConfigurationException {
+            this.metricsCallback = metricsCallback;
+            return this;
+        }
+
 
 
         /**
@@ -255,6 +369,20 @@ public class SubscribeConfiguration {
             this.subscribeRecency = subscribeRecency;
             return this;
         }
+
+
+        /**
+         * Configures whether subscription batching ensures message batching for batch size or batch interval whichever
+         * comes first OR batching enforces ceiling on batch size during the batch interval
+         *
+         * @param batchType Specifies Union or Intersection.Default is Intersection
+         * @return Builder
+         */
+        public Builder batchType(BatchType batchType) {
+            this.batchType = batchType;
+            return this;
+        }
+
 
         /**
          * retry interval indicates the time between retries when Event Hub is resending messages that have not been acked.
@@ -314,7 +442,11 @@ public class SubscribeConfiguration {
         this.batchingEnabled = builder.batchingEnabled;
         this.batchInterval = builder.batchInterval;
         this.batchSize = builder.batchSize;
+        this.batchType = builder.batchType;
         this.topics = builder.topics;
+        this.metricsEnabled = builder.metricsEnabled;
+        this.metricsInterval = builder.metricsInterval;
+        this.metricsCallback = builder.metricsCallback;
     }
 
     @Override
@@ -361,6 +493,12 @@ public class SubscribeConfiguration {
             toStringValues.add(batchSize);
             toStringValues.add("batchInterval");
             toStringValues.add(batchInterval);
+            toStringValues.add("batchType");
+            toStringValues.add(batchType);
+        }
+        if(this.metricsEnabled){
+            toStringValues.add("metricInterval");
+            toStringValues.add(metricsInterval);
         }
         toStringValues.add("topics");
         toStringValues.add(topics == null ? ":" : topics.toString());
@@ -371,6 +509,7 @@ public class SubscribeConfiguration {
         return new Builder()
                 .acksEnabled(this.acksEnabled)
                 .batchingEnabled(this.batchingEnabled)
+                .batchType(this.batchType)
                 .batchIntervalMilliseconds(this.batchInterval)
                 .batchSize(this.batchSize)
                 .durationBeforeRetrySeconds(this.durationBeforeFirstRetry)
@@ -379,6 +518,9 @@ public class SubscribeConfiguration {
                 .subscribeRecency(this.subscribeRecency)
                 .subscriberInstance(this.subscriberInstance)
                 .subscriberName(this.subscriberName)
-                .topics(this.topics);
+                .topics(this.topics)
+                .metricsEnabled(this.metricsEnabled)
+                .metricsCallBack(this.metricsCallback)
+                .metricsIntervalMinutes(this.metricsInterval);
     }
 }

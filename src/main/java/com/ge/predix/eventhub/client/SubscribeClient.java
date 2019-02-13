@@ -6,10 +6,6 @@ import java.util.logging.Level;
 
 import com.ge.predix.eventhub.*;
 import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.Message;
-import com.ge.predix.eventhub.stub.SubscriberGrpc;
-
 import io.grpc.*;
 import io.grpc.stub.StreamObserver;
 
@@ -94,6 +90,21 @@ abstract class SubscribeClient extends ClientInterface {
         throw new EventHubClientException("Subscribe Callback has not been created");
     }
 
+
+    /**
+     * Get the current registered metrics callback
+     *
+     * @return the current subscribe metrics callback object
+     * @throws EventHubClientException.SubscribeCallbackException
+     */
+    public Client.Callback getMetricsCallback() throws EventHubClientException.SubscribeCallbackException {
+
+        if (configuration.getSubscribeConfiguration().getMetricsCallback() != null) {
+            return configuration.getSubscribeConfiguration().getMetricsCallback();
+        }
+        throw new EventHubClientException.SubscribeCallbackException("Subscribe Metrics Callback has not been created. Use setMetricsCallback to register Metrics Callback for receving metrics messages");
+    }
+
     protected abstract void validateCallback(Callback c) throws EventHubClientException.SubscribeCallbackException;
 
     /**
@@ -124,7 +135,7 @@ abstract class SubscribeClient extends ClientInterface {
             @Override
             public void onError(Throwable throwable) {
                 if (checkErrorAllowed(throwable, expectedError)) {
-                    ehLogger.log( Level.FINE,
+                    ehLogger.log( Level.INFO,
                             SUBSCRIBE_STREAM_ERROR,
                             MSG_KEY, "silencing expected error",
                             FUNCTION_NAME_STRING, "SubscriberClient.createRequiredStream.onError",
@@ -166,10 +177,17 @@ abstract class SubscribeClient extends ClientInterface {
             }
             @Override
             public void onCompleted() {
-                ehLogger.log( Level.FINE,
+                ehLogger.log( Level.INFO,
                         SUBSCRIBE_STREAM_MSG,
-                        MSG_KEY, "subscribe stream complete, throwing unavaiable to iniate reconenct", FUNCTION_NAME_STRING, "createRequiredStream.SubscribeStream.onCompleted");
-                try {
+                        MSG_KEY, "subscribe stream complete, throwing unavailable to initiate reconnect", FUNCTION_NAME_STRING, "createRequiredStream.SubscribeStream.onCompleted");
+                try {                    
+                    expectedError = new Throwable(EventHubUtils.formatJson(
+                            SUBSCRIBE_STREAM_MSG,
+                            MSG_KEY, "reconnecting stream",
+                            FUNCTION_NAME_STRING, "reconnectStream",
+                            CAUSE_KEY, "stream completed"
+                    ).toString());
+                    cancelStreamContext(expectedError);
                     backOffDelay.initiateReconnect(Status.UNAVAILABLE);
                 } catch (EventHubClientException.ReconnectFailedException e) {
                     throwError(e);
@@ -340,10 +358,33 @@ abstract class SubscribeClient extends ClientInterface {
     void setSubscribeInBatchHeaders() {
         Metadata.Key<String> batchSize = Metadata.Key.of("batch-size", Metadata.ASCII_STRING_MARSHALLER);
         Metadata.Key<String> batchInterval = Metadata.Key.of("batch-interval", Metadata.ASCII_STRING_MARSHALLER);
+        Metadata.Key<String> batchtypeUnion  = Metadata.Key.of("batchtype-union", Metadata.ASCII_STRING_MARSHALLER);
         String batchIntervalUnit = "ms";
         SubscribeConfiguration subscribeConfiguration = configuration.getSubscribeConfiguration();
         header.put(batchInterval, String.valueOf(subscribeConfiguration.getBatchInterval()) + batchIntervalUnit);
         header.put(batchSize, String.valueOf(subscribeConfiguration.getBatchSize()));
+        if (subscribeConfiguration.getBatchType() == SubscribeConfiguration.BatchType.INTERSECTION){
+            header.put(batchtypeUnion,  String.valueOf(false));
+        }else if (subscribeConfiguration.getBatchType() == SubscribeConfiguration.BatchType.UNION){
+            header.put(batchtypeUnion,  String.valueOf(true));
+        }
+    }
+
+    /**
+     * Set the subscribe in metrics for the stub, usd by metrics but same header
+     */
+    void setSubscribeInMetricsHeaders() {
+
+        Metadata.Key<String> metricsInterval = Metadata.Key.of("metrics-interval", Metadata.ASCII_STRING_MARSHALLER);
+        String metricsIntervalUnit = "m";
+
+        Metadata.Key<String> metricsEnabled  = Metadata.Key.of("metrics", Metadata.ASCII_STRING_MARSHALLER);
+        header.put(metricsEnabled, String.valueOf(true));
+
+
+        SubscribeConfiguration subscribeConfiguration = configuration.getSubscribeConfiguration();
+        header.put(metricsInterval, String.valueOf(subscribeConfiguration.getMetricsInterval()) + metricsIntervalUnit);
+
     }
 
     /**
@@ -354,6 +395,7 @@ abstract class SubscribeClient extends ClientInterface {
     protected synchronized void subscribe(Client.Callback callback) throws EventHubClientException.SubscribeCallbackException {
         validateCallback(callback);
         this.callback = callback;
+
         if(isStreamClosed()){
             createRequiredStream();
         }
@@ -420,7 +462,7 @@ abstract class SubscribeClient extends ClientInterface {
      * tell if the stream is closed or not
      * @return if stream is closed
      */
-    protected boolean isStreamClosed() {
+    protected synchronized boolean isStreamClosed() {        
         return this.context == null || this.context.isCancelled();
     }
 
@@ -455,9 +497,37 @@ abstract class SubscribeClient extends ClientInterface {
                         CAUSE_KEY, cause == null ? "null": cause,
                         EXCEPTION_KEY, e
                 );
-            }
-        }
+            }            
+         }
     }
+
+
+    /**
+     * Close the stream since the subscriber stream is completed . this is because
+     * we don't get context cancellation if the service shuts down subscriber.
+     * @param cause
+     */
+    private synchronized void cancelStreamContext(Throwable cause) {       
+            
+            try {                
+                this.context.cancel(cause);
+                ehLogger.log( Level.INFO,
+                        SUBSCRIBE_STREAM_MSG,
+                        MSG_KEY, "closing stream",
+                        FUNCTION_NAME_STRING, "SubscribeClient.cancelStreamContext",
+                        CAUSE_KEY, cause == null ? "null": cause
+                );
+            } catch (IllegalStateException e) {
+                ehLogger.log( Level.WARNING,
+                        SUBSCRIBE_STREAM_ERROR,
+                        MSG_KEY, "error when closing stream",
+                        FUNCTION_NAME_STRING, "SubscribeClient.cancelStreamContext",
+                        CAUSE_KEY, cause == null ? "null": cause,
+                        EXCEPTION_KEY, e
+                );
+            }
+    }  
+    
 
     /**
      * Reconnect the stream and then resubscribe the callback

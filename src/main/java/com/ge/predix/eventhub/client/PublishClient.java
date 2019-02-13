@@ -5,12 +5,6 @@ import java.util.logging.Level;
 
 import com.ge.predix.eventhub.*;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.Messages;
-import com.ge.predix.eventhub.stub.PublishRequest;
-import com.ge.predix.eventhub.stub.PublishResponse;
-import com.ge.predix.eventhub.stub.PublisherGrpc;
-
 import io.grpc.*;
 import io.grpc.stub.StreamObserver;
 

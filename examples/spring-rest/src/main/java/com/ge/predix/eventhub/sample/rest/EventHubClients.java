@@ -32,18 +32,15 @@ public class EventHubClients {
     private static EventHubConfiguration eventHubConfiguration;
 
     private static final int MAX_MESSAGE_QUEUE_SIZE = 500;
-    private static AtomicInteger messageCount = new AtomicInteger();
-    private static final List<MessageWithClientID> rxMessages = Collections.synchronizedList(new ArrayList<MessageWithClientID>());
+    private static final List<MessageWithClientID> rxMessages = Collections.synchronizedList(new ArrayList<>());
 
     private static final int MAX_ERROR_COUNT = 100;
-    private static final List<String> rxErrors = Collections.synchronizedList(new ArrayList<String>());
-    private static AtomicInteger rxErrorCount = new AtomicInteger();
+    private static final List<String> rxErrors = Collections.synchronizedList(new ArrayList<>());
 
     private static final String subscriberName = "rest-app-subscriber";
     private static final String subscriberInstance = "sample-app-instance";
 
     private static org.slf4j.Logger logger = LoggerFactory.getLogger(EventHubClients.class);
-    private static String zoneID;
 
 
     /**
@@ -122,17 +119,6 @@ public class EventHubClients {
 
         //Build the EventHubConfigurations for the clients
         try {
-
-            // Subscribe only to three topics: default, NewTopic1, NewTopic2
-            EventHubConfiguration configuration_0 = new EventHubConfiguration.Builder()
-                    .fromEnvironmentVariables()
-                    .subscribeConfiguration(new SubscribeConfiguration.Builder()
-                            .topics(topicSuffixes) //Note the topics(List) vs topic(String)
-                            .subscriberName("multipleTopicSubscriber")
-                            .subscriberInstance(subscriberInstance)
-                            .build())
-                    .build();
-
             // Subscribe and publish to the default topic
             // note the lack of .topic in the configuration
             EventHubConfiguration configuration_1 = new EventHubConfiguration.Builder()
@@ -144,47 +130,14 @@ public class EventHubClients {
                     .subscribeConfiguration(new SubscribeConfiguration.Builder()
                             .subscriberName("defaultTopicSubscriber")
                             .subscriberInstance(subscriberInstance)
-                            .build())
-                    .build();
-
-
-            // Subscribe and publish to topic 1
-            EventHubConfiguration configuration_2 = new EventHubConfiguration.Builder()
-                    .fromEnvironmentVariables()
-                    .subscribeConfiguration(new SubscribeConfiguration.Builder()
-                            .topic(topicSuffix1)
-                            .subscriberName("newTopic1Subscriber")
-                            .subscriberInstance(subscriberInstance)
-                            .build())
-                    .publishConfiguration(new PublishConfiguration.Builder()
-                            .publisherType(PublishConfiguration.PublisherType.SYNC)
-                            .topic(topicSuffix1)
-                            .timeout(2000)
-                            .build())
-                    .build();
-
-            // Subscribe and publish to topic 2
-
-            EventHubConfiguration configuration_3 = new EventHubConfiguration.Builder()
-                    .fromEnvironmentVariables()
-                    .subscribeConfiguration(new SubscribeConfiguration.Builder()
-                            .topic(topicSuffix2)
-                            .subscriberName("newTopic2Subscriber")
-                            .subscriberInstance(subscriberInstance)
-                            .build())
-                    .publishConfiguration(new PublishConfiguration.Builder()
-                            .topic(topicSuffix2)
-                            .publisherType(PublishConfiguration.PublisherType.SYNC)
-                            .timeout(2000)
+                            .acksEnabled(true)
                             .build())
                     .build();
 
 
 
-            clients.add(new Client(configuration_0));
+
             clients.add(new Client(configuration_1));
-            clients.add(new Client(configuration_2));
-            clients.add(new Client(configuration_3));
 
             for (int i = 0; i < clients.size(); i++) {
                 // create and assoiate the subscribe callback classes
@@ -224,7 +177,7 @@ public class EventHubClients {
                    @RequestParam(value = "id") String id,
                    @RequestParam(value = "count", required = false) Integer count,
                    @RequestParam(value = "topicNum", required = false) Integer topicNum) throws EventHubClientException {
-        List<Ack> acks = new ArrayList<Ack>();
+        List<Ack> acks = new ArrayList<>();
 
         if (count == null || count <= 1) {
             count = 1;
@@ -238,7 +191,7 @@ public class EventHubClients {
         Messages.Builder msgBuilder = Messages.newBuilder();
         for(int i=0;i<count;i++) {
             Message msg = Message.newBuilder().setId(String.format("%s-%d", id, i))
-                    .setZoneId(zoneID)
+                    .setZoneId("9816b58b-02e1-4c5e-9608-31e22933c457")
                     .setBody(ByteString.copyFromUtf8(input))
                     .putAllTags(tags)
                     .build();
@@ -253,8 +206,9 @@ public class EventHubClients {
 
         if (topicNum == null || topicNum == 0) {
             logger.info("sending messages to deafult topic");
-            clients.get(1).addMessages(msgBuilder.build());
-            acks.addAll(clients.get(1).flush());
+            logger.info("Number of clients:" + clients.size());
+            clients.get(0).addMessages(msgBuilder.build());
+            acks.addAll(clients.get(0).flush());
         }
 
         if (topicNum == null || topicNum == 1) {
@@ -265,8 +219,8 @@ public class EventHubClients {
 
         if (topicNum == null || topicNum == 2) {
             logger.info("sending messages to NewTopic2");
-            clients.get(4).addMessages(msgBuilder.build());
-            acks.addAll(clients.get(4).flush());
+            clients.get(3).addMessages(msgBuilder.build());
+            acks.addAll(clients.get(3).flush());
         }
 
 
@@ -312,7 +266,53 @@ public class EventHubClients {
         return responses.toString();
     }
 
+    /**
+     * Subscribe with ack endpoint.
+     * Empties the Queues that are populated in the callback, along with getting an ack for each message
+     * and builds a JSON String for response
+     *
+     * @return JSON array containing messages, errors, and acks
+     * @throws EventHubClientException
+     */
+    @RequestMapping(value = "/subscribe/ack", method = RequestMethod.GET)
+    String subscribeAck() throws EventHubClientException {
+        JSONObject responses = new JSONObject();
+        JSONArray messages = new JSONArray();
+        JSONArray errors = new JSONArray();
+        JSONArray acks = new JSONArray();
+        List<Message> msgList = new ArrayList<>();
 
+        while (rxMessages.size() != 0) {
+            MessageWithClientID messageWithClientID = rxMessages.remove(0);
+            messages.put(new JSONObject(String.format("{\"subscribe_client\":%d,\"topic\":\"%s\", \"id\":\"%s\", \"Body\":\"%s\", \"tags\":%s}",
+                    messageWithClientID.clientId,
+                    messageWithClientID.m.getTopic(),
+                    messageWithClientID.m.getId(),
+                    messageWithClientID.m.getBody().toStringUtf8(),
+                    (new JSONObject(messageWithClientID.m.getTags())).toString())
+            ));
+            msgList.add(messageWithClientID.m);
+        }
+
+        for (String error : rxErrors) {
+            errors.put(error);
+        }
+
+        responses.put("messages", messages);
+        responses.put("errors", errors);
+
+        for (Message message : msgList) {
+            acks.put(Ack.newBuilder()
+                    .setId(message.getId()).setPartition(message.getPartition()).setTopic(message.getTopic())
+                    .setOffset(message.getOffset()).setTimestamp(message.getTimestamp()).setZoneId(message.getZoneId())
+                    .build());
+            }
+
+        responses.put("acks", acks);
+        clients.get(0).sendAcks(msgList);
+
+        return responses.toString();
+    }
     /**
      * Convert the Ack object to a JSON Object for returning
      * Acks though a rest endpoint

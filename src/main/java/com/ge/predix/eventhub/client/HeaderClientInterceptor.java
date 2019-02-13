@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.logging.Level;
+
 import com.ge.predix.eventhub.EventHubConstants;
 import com.ge.predix.eventhub.EventHubLogger;
 import io.grpc.CallOptions;
@@ -38,10 +39,12 @@ import static com.ge.predix.eventhub.EventHubConstants.HeaderClientInterceptorCo
  * A interceptor to handle client header.
  * The majority of this class handles getting the token and managing the scopes
  * see interceptCall() for the actual intercepting of the scopes
- *
  */
 class HeaderClientInterceptor implements ClientInterceptor {
     protected String scopePrefix = "predix-event-hub.zones.";
+    private final static String publishScopePostfix = ".grpc.publish";
+    private final static String subscribeScopePostfix = ".grpc.subscribe";
+    private final static String userScopePostfix = ".user";
 
     private String uaaToken;
     private long tokenExpirationTime;
@@ -55,7 +58,8 @@ class HeaderClientInterceptor implements ClientInterceptor {
 
     /**
      * Make the headerClientInterceptor
-     * @param client the  who made the interceptor so we can throw errors to sub-streams on bad auth
+     *
+     * @param client        the  who made the interceptor so we can throw errors to sub-streams on bad auth
      * @param configuration the configuration to pull information from (auth)
      */
     HeaderClientInterceptor(Client client, EventHubConfiguration configuration) {
@@ -71,12 +75,13 @@ class HeaderClientInterceptor implements ClientInterceptor {
 
     /**
      * Set the auth token
+     *
      * @param uaaToken the token to be set
-     * @param cause what caused the set auth
+     * @param cause    what caused the set auth
      */
     protected synchronized void setAuthToken(String uaaToken, String cause) {
         this.uaaToken = uaaToken;
-        ehLogger.log( Level.FINE,
+        ehLogger.log(Level.FINE,
                 INTERCEPTOR_MSG,
                 MSG_KEY, "token has been set",
                 "token", uaaToken,
@@ -87,6 +92,7 @@ class HeaderClientInterceptor implements ClientInterceptor {
 
     /**
      * Return the auth token
+     *
      * @return the current auth token
      */
     protected synchronized String getAuthToken() {
@@ -95,6 +101,7 @@ class HeaderClientInterceptor implements ClientInterceptor {
 
     /**
      * Force the token to be updated
+     *
      * @throws EventHubClientException if something happens while receiving the token
      */
     protected synchronized void forceRenewToken() throws EventHubClientException {
@@ -103,23 +110,49 @@ class HeaderClientInterceptor implements ClientInterceptor {
 
     /**
      * generate the scopes and retrieve the token from uaa
+     *
      * @return Token got from uaa
      * @throws EventHubClientException
      */
     private synchronized String getToken() throws EventHubClientException.AuthTokenRequestException, EventHubClientException.AuthenticationException {
-        if(this.scopes == null){
-            if(this.configuration.getAuthScopes() != null){
+        String tokenMaker;
+        if (this.scopes == null) {
+            if (this.configuration.getAuthScopes() != null) {
                 this.scopes = configuration.getAuthScopes();
-            }
-            else{
-                this.scopes  = generateScopes();
+            } else {
+                try {
+                    this.scopes = generateScopes();
+                    tokenMaker = requestToken();
+                } catch (EventHubClientException.AuthenticationException e) {
+                    ehLogger.log(Level.FINE,
+                            INTERCEPTOR_ERR,
+                            MSG_KEY, "missing scopes, will try wildcard scope",
+                            FUNCTION_NAME_STRING, "HeaderClientInterceptor.getToken",
+                            EXCEPTION_KEY, e
+                    );
+                    if (configuration.getPublishConfiguration() != null && configuration.getPublishConfiguration().getTopic() != null
+                            || configuration.getSubscribeConfiguration() != null && configuration.getSubscribeConfiguration().getTopics() != null
+                            && configuration.getSubscribeConfiguration().getTopics().size() != 0) {
+                        //if the client doesn't specify a topic, shouldn't check for wildcard scope
+                        this.scopes = generateWildcardScope();
+                        tokenMaker = requestToken();
+                    } else {
+                        throw new EventHubClientException.AuthenticationException(EventHubUtils.formatJson(
+                                INTERCEPTOR_ERR,
+                                MSG_KEY, "Incorrect topics provided",
+                                FUNCTION_NAME_STRING, "HeaderClientInterceptor.getToken()",
+                                EXCEPTION_KEY, e
+                        ).toString());
+                    }
+                }
+                return tokenMaker;
             }
         }
-        ehLogger.log( Level.INFO,
+        ehLogger.log(Level.INFO,
                 INTERCEPTOR_MSG,
                 MSG_KEY, "token renewing",
                 "auth URL", configuration.getAuthURL(),
-                "scopes" , scopes
+                "scopes", scopes
         );
         return this.requestToken();
     }
@@ -127,13 +160,14 @@ class HeaderClientInterceptor implements ClientInterceptor {
     /**
      * Setup and make the request to the AuthURI
      * also set the validity time
+     *
      * @return oAuth token if
      * @throws EventHubClientException.AuthenticationException
      * @throws EventHubClientException.AuthTokenRequestException
      */
     private synchronized String requestToken() throws EventHubClientException.AuthenticationException, EventHubClientException.AuthTokenRequestException {
 
-        String headerContentTypeKey  = "content-type";
+        String headerContentTypeKey = "content-type";
         String headerAuthorizationKey = "authorization";
         String authResponseAccessTokenKey = "access_token";
         String authResponseExpiresKey = "expires_in";
@@ -144,7 +178,7 @@ class HeaderClientInterceptor implements ClientInterceptor {
         HttpClient httpClient;
 
         if (proxy_uri != null && proxy_port != null) {
-            ehLogger.log( Level.INFO,
+            ehLogger.log(Level.INFO,
                     INTERCEPTOR_MSG,
                     FUNCTION_NAME_STRING, "HeaderClientInterceptor.requestToken",
                     MSG_KEY, "using proxy for token request",
@@ -159,16 +193,14 @@ class HeaderClientInterceptor implements ClientInterceptor {
                     .useSystemProperties()
                     .build();
         }
-
         String uaaToken;
         try {
             HttpPost request = new HttpPost(configuration.getAuthURL());
             StringEntity params = new StringEntity(urlEncodedParams);
-            request.addHeader(headerContentTypeKey,  "application/x-www-form-urlencoded");
+            request.addHeader(headerContentTypeKey, "application/x-www-form-urlencoded");
             request.addHeader(headerAuthorizationKey, client_authorization);
             request.setEntity(params);
             HttpResponse response = httpClient.execute(request);
-
             if (response != null) {
                 InputStream in = response.getEntity().getContent();
                 String encoding = "UTF-8";
@@ -180,14 +212,14 @@ class HeaderClientInterceptor implements ClientInterceptor {
                 } catch (JSONException e) {
                     throw new EventHubClientException.AuthTokenRequestException(EventHubUtils.formatJson(
                             INTERCEPTOR_ERR,
-                            MSG_KEY,  "can't parse oAuth response into json",
+                            MSG_KEY, "can't parse oAuth response into json",
                             FUNCTION_NAME_STRING, "HeaderClientInterceptor.requestToken",
-                            "body",  body.equals("") ? "<Empty Response>" : body,
-                            EXCEPTION_KEY,e
-                    ).toString()    );
+                            "body", body.equals("") ? "<Empty Response>" : body,
+                            EXCEPTION_KEY, e
+                    ).toString());
                 }
 
-                if(!resObj.has(authResponseAccessTokenKey) || !resObj.has(authResponseExpiresKey)){
+                if (!resObj.has(authResponseAccessTokenKey) || !resObj.has(authResponseExpiresKey)) {
                     throw new EventHubClientException.AuthenticationException(EventHubUtils.formatJson(
                             INTERCEPTOR_ERR,
                             MSG_KEY, "can't find token in response,  incorrect scopes or client info",
@@ -198,7 +230,7 @@ class HeaderClientInterceptor implements ClientInterceptor {
                     ).toString());
                 }
                 uaaToken = resObj.getString(authResponseAccessTokenKey);
-                ehLogger.log( Level.FINEST,
+                ehLogger.log(Level.FINEST,
                         INTERCEPTOR_MSG,
                         FUNCTION_NAME_STRING, "HeaderClientInterceptor.requestToken",
                         MSG_KEY, "got token",
@@ -209,7 +241,7 @@ class HeaderClientInterceptor implements ClientInterceptor {
             } else {
                 throw new EventHubClientException.AuthTokenRequestException(EventHubUtils.formatJson(
                         INTERCEPTOR_ERR,
-                        MSG_KEY,  "response from oAuth2 provider was null",
+                        MSG_KEY, "response from oAuth2 provider was null",
                         FUNCTION_NAME_STRING, "HeaderClientInterceptor.requestToken"
                 ).toString());
             }
@@ -230,51 +262,47 @@ class HeaderClientInterceptor implements ClientInterceptor {
      * Generate the scopes for the configuration supplied by the client
      * It will always request root user scope. Only request the scopes for the clients provided
      * Subscribe Scopes:
-     *  request the root scopes if topic list is empty, else request subscribe and user scope of that subtopic
+     * request the root scopes if topic list is empty, else request subscribe and user scope of that subtopic
      * Publish Scopes:
-     *  request the roots scopes if topic is empty, else request publish and user(if not already added) of subtopic
+     * request the roots scopes if topic is empty, else request publish and user(if not already added) of subtopic
+     *
      * @return comma delimited string containing the required scopes.
      */
-    protected String generateScopes(){
-        String publishScopePostfix =  ".grpc.publish";
-        String subscribeScopePostfix = ".grpc.subscribe";
-        String userScopePostfix = ".user";
-
+    protected String generateScopes() {
         String delimiter = ",";
         StringBuilder scopes = new StringBuilder();
         scopes.append(scopePrefix);
         scopes.append(configuration.getZoneID());
         scopes.append(userScopePostfix);
         scopes.append(delimiter);
-        if(configuration.getSubscribeConfiguration() != null){
-            List<String> topics =  configuration.getSubscribeConfiguration().getTopics();
-            if(topics.size() == 0){
+        if (configuration.getSubscribeConfiguration() != null) {
+            List<String> topics = configuration.getSubscribeConfiguration().getTopics();
+            if (topics.size() == 0) {
                 //we only have the default topic
                 scopes.append(scopePrefix);
                 scopes.append(configuration.getZoneID());
                 scopes.append(subscribeScopePostfix);
                 scopes.append(delimiter);
-            }else{
-                for(String topic : configuration.getSubscribeConfiguration().getTopics()){
+            } else {
+                for (String topic : configuration.getSubscribeConfiguration().getTopics()) {
                     scopes.append(scopePrefix).append(configuration.getZoneID()).append(".").append(topic).append(subscribeScopePostfix);
                     scopes.append(delimiter);
                 }
             }
         }
-        if(configuration.getPublishConfiguration() != null){
+        if (configuration.getPublishConfiguration() != null) {
             String publishTopic = configuration.getPublishConfiguration().getTopic();
-            if(publishTopic == null){
+            if (publishTopic == null) {
                 scopes.append(scopePrefix).append(configuration.getZoneID()).append(publishScopePostfix);
                 scopes.append(delimiter);
-            }
-            else{
+            } else {
                 scopes.append(scopePrefix).append(configuration.getZoneID()).append(".").append(publishTopic).append(publishScopePostfix);
                 scopes.append(delimiter);
             }
         }
         //remove last delimiter and return
-        String strscopes = scopes.deleteCharAt(scopes.length()-1).toString();
-        ehLogger.log( Level.INFO,
+        String strscopes = scopes.deleteCharAt(scopes.length() - 1).toString();
+        ehLogger.log(Level.INFO,
                 INTERCEPTOR_MSG,
                 MSG_KEY, "generated scopes",
                 "scopes", strscopes);
@@ -282,10 +310,38 @@ class HeaderClientInterceptor implements ClientInterceptor {
     }
 
     /**
+     * If a wildcard scope (*) is required, it must be manually created to determine if the client has
+     * access to all the topics of a particular zone ID
+     *
+     * @return scope list created with *
+     */
+    protected String generateWildcardScope() {
+        String delimiter = ",";
+        String wildcard = ".*";
+        StringBuilder scopes = new StringBuilder();
+        scopes.append(scopePrefix).append(configuration.getZoneID()).append(userScopePostfix).append(delimiter);
+        if (configuration.getSubscribeConfiguration() != null) {
+            scopes.append(scopePrefix).append(configuration.getZoneID()).append(wildcard).append(subscribeScopePostfix);
+            scopes.append(delimiter);
+        }
+        if (configuration.getPublishConfiguration() != null) {
+            scopes.append(scopePrefix).append(configuration.getZoneID()).append(wildcard).append(publishScopePostfix);
+            scopes.append(delimiter);
+        }
+        String retScopes = scopes.deleteCharAt(scopes.length() - 1).toString();
+        ehLogger.log(Level.INFO,
+                INTERCEPTOR_MSG,
+                MSG_KEY, "generated wildcard scopes",
+                "scopes", retScopes);
+        return retScopes;
+    }
+
+    /**
      * Test if the token is valid
      * use valid interval to provide a <1> second safety room
      * to prevent the edge case where the token is valid when we send it but
      * become invalid to service. (though this would just cause a reconnect anyways)
+     *
      * @return
      */
     private boolean tokenIsValid() {
@@ -296,46 +352,47 @@ class HeaderClientInterceptor implements ClientInterceptor {
      * This is the acutual grpc channel interceptor
      * Each time a stub (stream/service) is created on Client.orginChannel this will get called each time. If a token has been set
      * by a previous intercept and is still valid it will use it, else it will request a new one.
-     * @param method the remote method to be called.
+     *
+     * @param method      the remote method to be called.
      * @param callOptions the runtime options to be applied to this call.
-     * @param next the channel which is being intercepted.
+     * @param next        the channel which is being intercepted.
      * @return the call object for the remote operation, never {@code null}.
      */
     public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(final MethodDescriptor<ReqT, RespT> method,
                                                                CallOptions callOptions, Channel next) {
         return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-              @Override
+            @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
-                  ehLogger.log( Level.FINE,
+                ehLogger.log(Level.FINE,
                         INTERCEPTOR_MSG,
-                            MSG_KEY, "intercepting the client call to add auth information",
-                            "call", method.getFullMethodName()
+                        MSG_KEY, "intercepting the client call to add auth information",
+                        "call", method.getFullMethodName()
                 );
                 if (!tokenIsValid() && configuration.isAutomaticTokenRenew()) {
                     try {
                         setAuthToken(getToken(), "getToken for " + method.getFullMethodName());
                     } catch (EventHubClientException e) {
-                        ehLogger.log( Level.WARNING,
+                        ehLogger.log(Level.WARNING,
                                 INTERCEPTOR_ERR,
-                                MSG_KEY,"error in intercepting client call for auth, sending error to stream",
+                                MSG_KEY, "error in intercepting client call for auth, sending error to stream",
                                 "call", method.getFullMethodName(),
-                                EXCEPTION_KEY,e
+                                EXCEPTION_KEY, e
                         );
                         client.throwErrorToStream(method.getFullMethodName(), Status.Code.UNAUTHENTICATED, e.getMessage(), e);
                     }
                 }
-                if(uaaToken.equals("")){
+                if (uaaToken.equals("")) {
                     EventHubClientException e = new EventHubClientException.AuthenticationException("no token set");
                     client.throwErrorToStream(method.getFullMethodName(), Status.Code.UNAUTHENTICATED, e.getMessage(), e);
-                }else{
+                } else {
                     headers.put(Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER), uaaToken);
                     headers.put(Metadata.Key.of("predix-zone-id", Metadata.ASCII_STRING_MARSHALLER), configuration.getZoneID());
                     headers.put(Metadata.Key.of("content-type", Metadata.ASCII_STRING_MARSHALLER), "application/grpc");
                     SimpleForwardingClientCallListener clientCallListener = new SimpleForwardingClientCallListener<RespT>(responseListener) {
                     };
-                    ehLogger.log( Level.FINE,
+                    ehLogger.log(Level.FINE,
                             INTERCEPTOR_MSG,
-                            MSG_KEY,  "successfully attached token to stream",
+                            MSG_KEY, "successfully attached token to stream",
                             "call", method.getFullMethodName()
                     );
                     super.start(clientCallListener, headers);

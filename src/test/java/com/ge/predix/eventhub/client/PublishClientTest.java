@@ -3,7 +3,12 @@ package com.ge.predix.eventhub.client;
 import static com.ge.predix.eventhub.client.utils.TestUtils.SUBSCRIBER_ACTIVE_WAIT_LENGTH;
 import static com.ge.predix.eventhub.client.utils.TestUtils.createRandomString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,30 +22,31 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.junit.runners.MethodSorters;
 
+import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.AckStatus;
 import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.Message;
+import com.ge.predix.eventhub.Messages;
 import com.ge.predix.eventhub.client.utils.TestUtils;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
 import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.AckStatus;
-import com.ge.predix.eventhub.stub.Message;
-import com.ge.predix.eventhub.stub.Messages;
+import com.ge.predix.eventhub.test.categories.SanityTest;
 import com.google.protobuf.ByteString;
 
 /**
  * Created by 212571077 on 7/8/16.
  */
-@Ignore
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+
 public class PublishClientTest {
 
     final String subscriberName = "test-subscriber";
@@ -84,6 +90,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void addMessage() throws EventHubClientException {
         for (int j = 0; j < 100; j++) {
             syncClient.addMessage(j+"", "message", null);
@@ -92,6 +99,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void addTooManyMessages() throws EventHubClientException {
         int maxMessages = 11; // keep odd
         EventHubConfiguration syncConfiguration = new EventHubConfiguration.Builder()
@@ -116,6 +124,7 @@ public class PublishClientTest {
 
     @Test
 // test all three addMessage methods
+    @Category(SanityTest.class)
     public void addMessageE2E() throws EventHubClientException {
         EventHubConfiguration sampleConfiguration = new EventHubConfiguration.Builder()
                 .fromEnvironmentVariables()
@@ -183,6 +192,7 @@ public class PublishClientTest {
     Expected: Subscriber retrieves messages with different tags
     */
     @Test
+    @Category(SanityTest.class)
     public void sendMessagesWithTags() throws EventHubClientException {
         EventHubConfiguration eventHubConfiguration = new EventHubConfiguration.Builder()
                 .fromEnvironmentVariables()
@@ -231,6 +241,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
 // test async and sync publish by sending 100 messages 10 times
     public void publish() throws EventHubClientException{
 // make async callback
@@ -257,6 +268,7 @@ public class PublishClientTest {
 
 
     @Test
+    @Category(SanityTest.class)
     public void multipleAsyncClientPublish() throws EventHubClientException {
         EventHubConfiguration asyncConfiguration = new EventHubConfiguration.Builder()
                 .fromEnvironmentVariables()
@@ -294,6 +306,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void multipleSyncClientPublish() throws EventHubClientException {
         EventHubConfiguration syncConfiguration = new EventHubConfiguration.Builder()
                 .fromEnvironmentVariables()
@@ -335,6 +348,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     // test adding messages with two threads that add messages
     public void withThreadsAddMessage() throws InterruptedException, EventHubClientException {
         // make async callback
@@ -404,6 +418,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     // two thread sends, one adds
     public void withThreadsPublishAndAdd() throws InterruptedException, EventHubClientException {
         // make sync counter
@@ -524,6 +539,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     // test that we only get Nacks, Acks/Nacks can be false but this should override it
     public void asyncNacksOnly() throws EventHubClientException {
         // make client that will only get nacks
@@ -648,6 +664,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void asyncCacheInterval() throws EventHubClientException, InterruptedException {
         // test with 100ms interval
         EventHubConfiguration configuration = new EventHubConfiguration.Builder()
@@ -701,6 +718,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
         // test that the override of sync timeout
     public void syncTimeoutOverride() throws EventHubClientException {
         // make client with a override sync timeout which is too short to receive messages
@@ -726,6 +744,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void closeConnectionOnError() throws EventHubClientException {
         TestUtils.PublishCallback callback = new TestUtils.PublishCallback();
 
@@ -771,6 +790,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void testPubSyncErrors() throws EventHubClientException {
 
         EventHubClientException.SyncPublisherFlushException syncPublisherFlushException = null;
@@ -788,6 +808,7 @@ public class PublishClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void testEmptyBody() throws EventHubClientException {
         List<Ack> acks = syncClient.addMessage("id", "", null).flush();
         System.out.println(acks);
@@ -811,6 +832,7 @@ public class PublishClientTest {
      * @throws EventHubClientException if something goes wrong
      */
     @Test
+    @Category(SanityTest.class)
     public void addTooLargeMessage() throws EventHubClientException {
         EventHubConfiguration sampleConfiguration = new EventHubConfiguration.Builder()
                 .fromEnvironmentVariables()

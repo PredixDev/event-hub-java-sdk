@@ -1,27 +1,22 @@
 package com.ge.predix.eventhub.client.utils;
 
+import com.ge.predix.eventhub.Ack;
+import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.EventHubLogger;
+import com.ge.predix.eventhub.Message;
+import com.ge.predix.eventhub.client.Client;
+import com.ge.predix.eventhub.configuration.LoggerConfiguration;
+
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
-import org.junit.Ignore;
-
-import com.ge.predix.eventhub.EventHubClientException;
-import com.ge.predix.eventhub.EventHubLogger;
-import com.ge.predix.eventhub.client.Client;
-import com.ge.predix.eventhub.configuration.LoggerConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.Message;
-
 /**
  * This class is used for defining things used across multiple tests
  */
-@Ignore
 public class TestUtils {
     public static final long DEFAULT_SUBSCRIBER_TIMEOUT = 60000L;
     public static final long DEFAULT_PUBLISHER_TIMEOUT = 30000L;
@@ -80,7 +75,7 @@ public class TestUtils {
 
         public void onFailure(Throwable throwable) {
             // System.out.println(name + "::error");
-            // System.out.println(throwable.getMessage());
+            // System.out.println(throwable.getMessages());
             ehLogger.log(Level.WARNING, "function", "PublishCallback.onFailure", "error", throwable);
             errors.add(throwable);
         }
@@ -265,7 +260,7 @@ public class TestUtils {
                 //System.out.println("acking");
                 subscribeClient.sendAck(message);
             } catch (EventHubClientException e) {
-                //System.out.println(e.getMessage());
+                //System.out.println(e.getMessages());
             }
 
         }
@@ -277,7 +272,7 @@ public class TestUtils {
          */
         public void onFailure(Throwable throwable) {
 //      System.out.println(name + "::error");
-//      System.out.println(throwable.getMessage());
+//      System.out.println(throwable.getMessages());
             ehLogger.log(Level.WARNING, "function", "TestSubscribeAckCallback.onFailure", "error", throwable);
 
             nonAckCallback.onFailure(throwable);
@@ -357,7 +352,7 @@ public class TestUtils {
 
         public void onFailure(Throwable throwable) {
 //      System.out.println(name + "::error");
-//        System.out.println(throwable.getMessage());
+//        System.out.println(throwable.getMessages());
             ehLogger.log(Level.WARNING, "function", "TestSubscribeBatchCallback.onFailure", "error", throwable);
             normalCallback.onFailure(throwable);
         }
@@ -431,6 +426,122 @@ public class TestUtils {
         }
         return client.flush();
     }
+
+
+    public static class TestMetricsCallback implements Client.MetricsCallBack {
+        private List<Message> messages = Collections.synchronizedList(new ArrayList<Message>());
+        private List<Throwable> errors = Collections.synchronizedList(new ArrayList<Throwable>());
+        private CountDownLatch finishLatch = new CountDownLatch(0);
+
+        /**
+         * Basic Subscribe callback
+         * Use expected message so we only keep track of the messages we published for that test
+         * Since most of the tests have been switched to newest should not be that much of an issue.
+         *
+         *
+         */
+        public TestMetricsCallback() {
+        }
+
+        /**
+         * Block the current thread for a count number of messages.
+         * Used to dynamically wait for a set number of messages instead of a set time period
+         * Will still timeout after the DEFAULT_SUBSCRIBER_TIMEOUT
+         *
+         * @param count the number of messages to wait for
+         */
+        public void block(int count) {
+            block(count, DEFAULT_SUBSCRIBER_TIMEOUT);
+        }
+
+        /**
+         * If you want to use a timeout other than the DEFAULT_SUBSCRIBER_TIMEOUT
+         *
+         * @param count   the number of messages to wait for
+         * @param timeout the time period tom wait before we timeout
+         */
+        void block(int count, long timeout) {
+            if (getMessageCount() >= count) {
+                return;
+            }
+            finishLatch = new CountDownLatch(count - getMessageCount());
+            long startTime = System.currentTimeMillis();
+            //System.out.println("Subscriber block started with count of: " + finishLatch.getCount());
+
+            try {
+                finishLatch.await(timeout, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            if(finishLatch.getCount() == 0){
+                // System.out.println("Subscriber block finished, time: " + (System.currentTimeMillis() - startTime));
+            }else{
+                //  System.out.println("Subscriber block finished with count of: " + finishLatch.getCount());
+            }
+
+        }
+
+        /**
+         * On each message, only count the message if it was part of the expected message
+         *
+         * @param message the message coming from the streamObserver in the subscriberClient
+         */
+        public void onMessage(Message message) {
+                ehLogger.log(Level.INFO, "received metric message",message.toString());
+                messages.add(message);
+                if (finishLatch.getCount() != 0) {
+                    this.finishLatch.countDown();
+                }
+        }
+
+        /**
+         * on a failure add the throwable to the list of throwables
+         * currently the tests do not use the list of errors, only the count, but its nice when debugging
+         *
+         * @param throwable the error thrown the stream
+         */
+        public void onFailure(Throwable throwable) {
+            ehLogger.log(Level.WARNING, "function", "TestSubscribeCallback.onFailure", "error", throwable);
+
+            errors.add(throwable);
+        }
+
+        /**
+         * return the number of messages that matched the expected message.
+         *
+         * @return message count
+         */
+        public int getMessageCount() {
+            return messages.size();
+        }
+
+        /**
+         * return the current message list
+         *
+         * @return the message list
+         */
+        public List<Message> getMessages() {
+            return messages;
+        }
+
+        /**
+         * get the number of errors thrown the stream
+         *
+         * @return the size of the error list
+         */
+        public int getErrorCount() {
+            return errors.size();
+        }
+
+        /**
+         * Reset the lists to contain no message/errors
+         */
+        public void resetCounts() {
+            messages.clear();
+            errors.clear();
+        }
+    }
+
 
 
 }

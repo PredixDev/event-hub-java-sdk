@@ -11,6 +11,7 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import javax.net.ssl.SSLException;
@@ -22,26 +23,30 @@ import org.junit.FixMethodOrder;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.junit.runners.MethodSorters;
 
+import com.ge.predix.eventhub.Ack;
 import com.ge.predix.eventhub.EventHubClientException;
+import com.ge.predix.eventhub.Message;
+import com.ge.predix.eventhub.client.utils.TestUtils.TestMetricsCallback;
 import com.ge.predix.eventhub.client.utils.TestUtils.TestSubscribeAckCallback;
 import com.ge.predix.eventhub.client.utils.TestUtils.TestSubscribeBatchCallback;
 import com.ge.predix.eventhub.client.utils.TestUtils.TestSubscribeCallback;
 import com.ge.predix.eventhub.configuration.EventHubConfiguration;
 import com.ge.predix.eventhub.configuration.PublishConfiguration;
 import com.ge.predix.eventhub.configuration.SubscribeConfiguration;
-import com.ge.predix.eventhub.stub.Ack;
-import com.ge.predix.eventhub.stub.Message;
+import com.ge.predix.eventhub.test.categories.SanityTest;
 
 /**
  * Created by 212571077 on 7/11/16.
  */
-@Ignore
+
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+
 public class SubscribeClientTest {
     Long TIME_FOR_FIRST_RETRY = 36000L;
     int DEFAULT_RETRY_INTERVAL = 31;
@@ -105,6 +110,7 @@ public class SubscribeClientTest {
      * @throws EventHubClientException
      */
     @Test
+    @Category(SanityTest.class)
     public void subscribe() throws EventHubClientException {
         // clear queue
         int numberOfMessages = 50;
@@ -129,6 +135,7 @@ public class SubscribeClientTest {
      * @throws EventHubClientException
      */
     @Test
+    @Category(SanityTest.class)
     public void subscribeDifferentName() throws EventHubClientException {
         String message = "subscribeDifferentName test message";
         int numMessages = 50;
@@ -172,6 +179,7 @@ public class SubscribeClientTest {
      * @throws EventHubClientException
      */
     @Test
+    @Category(SanityTest.class)
     public void subscribeResubscribe() throws EventHubClientException {
         String message = "subscribeResubscribe test message";
         TestSubscribeCallback callback = new TestSubscribeCallback( message);
@@ -199,6 +207,7 @@ public class SubscribeClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     // ensure that after shutdown, no messages are received
     public void subscribeEnsureShutdown() throws EventHubClientException {
         //make new pub client
@@ -236,6 +245,7 @@ public class SubscribeClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     // when two threads subscribe at the same time, only one thread will actually subscribe
     public void subscribeDifferentThreads() throws InterruptedException, EventHubClientException {
         String message = createRandomString();
@@ -382,6 +392,7 @@ public class SubscribeClientTest {
 
 
     @Test
+    @Category(SanityTest.class)
     public void subscribeWithAckMessageRetry() throws EventHubClientException {
         String thisSubscriberName = "test-subscriber-subscribeWithAckMessageRetry";
         String thisSubscriberID = "tester-subscribeWithAckMessageRetry";
@@ -453,6 +464,7 @@ public class SubscribeClientTest {
      * @throws EventHubClientException
      */
     @Test(expected = EventHubClientException.class)
+    @Category(SanityTest.class)
     public void sendAckIllegalCall() throws EventHubClientException {
 
         EventHubConfiguration eventHubConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
@@ -536,6 +548,7 @@ public class SubscribeClientTest {
      * @throws EventHubClientException if something goes wrong
      */
     @Test
+    @Category(SanityTest.class)
     public void subscribeNewest() throws EventHubClientException {
         int numMessages = 50;
         int numMessages2 = 10;
@@ -639,6 +652,7 @@ public class SubscribeClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void sendAckInCallback() throws EventHubClientException {
 //build subscribe with ack client
         EventHubConfiguration subscribeWithAckConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
@@ -671,6 +685,7 @@ public class SubscribeClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void subscribeInBatch() throws EventHubClientException {
         int batchSize = 100;
         int batchInterval = 1000;
@@ -704,6 +719,7 @@ public class SubscribeClientTest {
 
 
     @Test
+    @Category(SanityTest.class)
     public void sendAcksOverMultipleThreads() throws EventHubClientException {
         int numberMessages = 5;
         EventHubConfiguration subscribeWithAckConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
@@ -807,6 +823,7 @@ public class SubscribeClientTest {
     }
 
     @Test
+    @Category(SanityTest.class)
     public void subscribeInBatchWithAck() throws EventHubClientException {
         String thisSubscriberName = "test-subscriber-subscribeInBatchWithAck";
         EventHubConfiguration subscribeInBatchWithPublish = new EventHubConfiguration.Builder()
@@ -859,6 +876,7 @@ public class SubscribeClientTest {
      * @throws EventHubClientException
      */
     @Test
+    @Category(SanityTest.class)
     public void testResubscribeAck() throws EventHubClientException {
         String thisSubscriberName = "test-subscriber-testResubscribeAck";
         String thisSubscriberID = "tester-testResubscribeAck";
@@ -907,8 +925,8 @@ public class SubscribeClientTest {
      * This set assures that the batch subscription rate is limited to the batch size per batch interval
      * @throws EventHubClientException
      */
-    @Ignore
     @Test
+    @Category(SanityTest.class)
     public void subscribeBatchRate() throws EventHubClientException {
         EventHubConfiguration config = new EventHubConfiguration.Builder()
                 .fromEnvironmentVariables()
@@ -946,6 +964,263 @@ public class SubscribeClientTest {
 
         subscribeBatchClient.shutdown();
     }
+
+
+
+    @Test
+    @Category(SanityTest.class)
+    public void subscribeWithMetrics() throws EventHubClientException {
+        String thisSubscriberName = "test-subscriber-subscribeWithMetrics";
+        String thisSubscriberID = "tester-subscribeWithMetrics";
+        //build subscribe with ack client
+        int numMessages = 10;
+        TestMetricsCallback metricsCallback = new TestMetricsCallback();
+        EventHubConfiguration subscribeWithMetricsConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
+                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC).build())
+                .subscribeConfiguration(new SubscribeConfiguration.Builder()
+                        .subscriberName(thisSubscriberName + "-1")
+                        .subscriberInstance(thisSubscriberID)
+                        .subscribeRecency(SubscribeConfiguration.SubscribeRecency.NEWEST)
+                        .metricsCallBack(metricsCallback)
+                        .metricsIntervalMinutes(1)
+                        .metricsEnabled(true)
+                        .batchSize(10)
+                        .batchIntervalMilliseconds(1000)
+                        .build())
+                .build();
+
+        String messageBody = createRandomString();
+        String messageIdPreface = createRandomString();
+        Client subscribeWithMetricsClient = new Client(subscribeWithMetricsConfiguration);
+
+
+        String message = createRandomString();
+        TestSubscribeBatchCallback subscribeBatchRateCallback = new TestSubscribeBatchCallback(message);
+        subscribeWithMetricsClient.subscribe(subscribeBatchRateCallback);
+        pause(SUBSCRIBER_ACTIVE_WAIT_LENGTH);
+        // build and send messages
+        List<Ack> theAcks =  buildAndSendMessages(subscribeWithMetricsClient, messageBody, numMessages, messageIdPreface);
+        //Acks for 100 messages published
+        assertEquals(10, theAcks.size());
+
+        //First set of messages to be received in ~ 1 second
+        pause(900L);
+        assertTrue(subscribeBatchRateCallback.getMessageCount() <= 10);
+        subscribeBatchRateCallback.resetCounts();
+        pause(100L);
+
+        pause(60000L);
+
+        metricsCallback.block(1);
+        assertEquals(1, metricsCallback.getMessageCount());
+        List<Message> msgList1= new ArrayList<Message>();
+        msgList1.addAll(metricsCallback.getMessages());
+        metricsCallback.resetCounts();
+
+
+        //send next set of messages
+        theAcks =  buildAndSendMessages(subscribeWithMetricsClient, messageBody, numMessages, messageIdPreface);
+        //Acks for 100 messages published
+        assertEquals(10, theAcks.size());
+
+        //First set of messages to be received in ~ 1 second
+        pause(900L);
+        assertTrue(subscribeBatchRateCallback.getMessageCount() <= 10);
+        subscribeBatchRateCallback.resetCounts();
+        pause(100L);
+
+        pause(60000L);
+
+
+        //first metrics message with offset committed.
+        metricsCallback.block(1);
+        assertEquals(1, metricsCallback.getMessageCount());
+
+        List<Message> msgList2= new ArrayList<Message>();
+        msgList2.addAll(metricsCallback.getMessages());
+        metricsCallback.resetCounts();
+        subscribeBatchRateCallback.resetCounts();
+
+        String zoneID =   subscribeWithMetricsConfiguration.getZoneID();
+        Map<String,String> map1 =  msgList1.get(0).getMetric().getMetricmap();
+        Map<String,String> map2 =  msgList2.get(0).getMetric().getMetricmap();
+
+
+        //second metrics message should not be equal to first metric message since we ingested some data
+        assertNotEquals(Long.valueOf(map1.get(zoneID+"_topic"+ "-1")).longValue(),Long.valueOf(map2.get(zoneID+"_topic"+ "-1")).longValue());
+
+        pause(61000L);
+
+        metricsCallback.block(1);
+        assertEquals(1, metricsCallback.getMessageCount());
+
+        List<Message> msgList3= new ArrayList<Message>();
+        msgList3.addAll(metricsCallback.getMessages());
+        metricsCallback.resetCounts();
+
+
+        map2 =  msgList2.get(0).getMetric().getMetricmap();
+        Map<String,String> map3 =  msgList3.get(0).getMetric().getMetricmap();
+
+        //third metrics message must to be equal to second since we didn't ingest any data
+        assertEquals(Long.valueOf(map2.get(zoneID+"_topic"+ "-1")).longValue(),Long.valueOf(map3.get(zoneID+"_topic"+ "-1")).longValue());
+
+        subscribeWithMetricsClient.shutdown();
+    }
+
+
+    @Test
+    @Category(SanityTest.class)
+    public void subscribeWithMetricsCheckException() throws EventHubClientException {
+        String thisSubscriberName = "test-subscriber-subscribeWithMetrics";
+        String thisSubscriberID = "tester-subscribeWithMetrics";
+        TestMetricsCallback metricsCallback = new TestMetricsCallback();
+        EventHubConfiguration subscribeWithMetricsConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
+                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC).build())
+                .subscribeConfiguration(new SubscribeConfiguration.Builder()
+                        .subscriberName(thisSubscriberName + "-1")
+                        .subscriberInstance(thisSubscriberID)
+                        .subscribeRecency(SubscribeConfiguration.SubscribeRecency.NEWEST)
+                        .metricsCallBack(metricsCallback)
+                        .metricsIntervalMinutes(1)
+                        .metricsEnabled(true)
+                        .batchSize(10)
+                        .batchIntervalMilliseconds(1000)
+                        .build())
+                .build();
+
+        Client subscribeWithMetricsClient = new Client(subscribeWithMetricsConfiguration);
+        String message = createRandomString();
+        TestSubscribeCallback subscribeCallback = new TestSubscribeCallback(message);
+        try {
+            subscribeWithMetricsClient.subscribe(subscribeCallback);
+        }catch (Exception e){
+         assertTrue(e instanceof EventHubClientException.SubscribeCallbackException);
+        }
+        subscribeWithMetricsClient.shutdown();
+    }
+
+
+    @Test
+    @Category(SanityTest.class)
+    public void subscribeWithMetricsAndBatch() throws EventHubClientException {
+        String thisSubscriberName = "test-subscriber-subscribeWithMetrics";
+        String thisSubscriberID = "tester-subscribeWithMetrics";
+        TestMetricsCallback metricsCallback = new TestMetricsCallback();
+        EventHubConfiguration subscribeWithMetricsConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
+                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC).build())
+                .subscribeConfiguration(new SubscribeConfiguration.Builder()
+                        .subscriberName(thisSubscriberName + "-1")
+                        .subscriberInstance(thisSubscriberID)
+                        .subscribeRecency(SubscribeConfiguration.SubscribeRecency.NEWEST)
+                        .metricsCallBack(metricsCallback)
+                        .metricsIntervalMinutes(1)
+                        .metricsEnabled(true)
+                        .batchSize(10)
+                        .batchIntervalMilliseconds(1000)
+                        .batchingEnabled(true)
+                        .build())
+                .build();
+
+        assertEquals(subscribeWithMetricsConfiguration.getSubscribeConfiguration().getBatchType(), SubscribeConfiguration.BatchType.INTERSECTION );
+    }
+
+    @Test
+    @Category(SanityTest.class)
+    public void subscribeWithBatchAndMetrics() throws EventHubClientException {
+        String thisSubscriberName = "test-subscriber-subscribeWithMetrics";
+        String thisSubscriberID = "tester-subscribeWithMetrics";
+        TestMetricsCallback metricsCallback = new TestMetricsCallback();
+        EventHubConfiguration subscribeWithMetricsConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
+                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC).build())
+                .subscribeConfiguration(new SubscribeConfiguration.Builder()
+                        .subscriberName(thisSubscriberName + "-1")
+                        .subscriberInstance(thisSubscriberID)
+                        .subscribeRecency(SubscribeConfiguration.SubscribeRecency.NEWEST)
+                        .batchSize(10)
+                        .batchIntervalMilliseconds(1000)
+                        .batchingEnabled(true)
+                        .metricsCallBack(metricsCallback)
+                        .metricsIntervalMinutes(1)
+                        .metricsEnabled(true)
+                        .build())
+                .build();
+
+        assertEquals(subscribeWithMetricsConfiguration.getSubscribeConfiguration().getBatchType(), SubscribeConfiguration.BatchType.INTERSECTION );
+    }
+
+
+    @Test
+    @Category(SanityTest.class)
+    public void subscribeMetrics() throws EventHubClientException {
+        String thisSubscriberName = "test-subscriber-subscribeWithMetrics";
+        String thisSubscriberID = "tester-subscribeWithMetrics";
+        TestMetricsCallback metricsCallback = new TestMetricsCallback();
+        EventHubConfiguration subscribeWithMetricsConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
+                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC).build())
+                .subscribeConfiguration(new SubscribeConfiguration.Builder()
+                        .subscriberName(thisSubscriberName + "-1")
+                        .subscriberInstance(thisSubscriberID)
+                        .subscribeRecency(SubscribeConfiguration.SubscribeRecency.NEWEST)
+                        .metricsCallBack(metricsCallback)
+                        .metricsIntervalMinutes(1)
+                        .metricsEnabled(true)
+                        .build())
+                .build();
+
+        assertEquals(subscribeWithMetricsConfiguration.getSubscribeConfiguration().getBatchType(), SubscribeConfiguration.BatchType.UNION );
+    }
+
+    @Test
+    @Category(SanityTest.class)
+    public void subscribeMetricsBatchAndBatchType() throws EventHubClientException {
+        String thisSubscriberName = "test-subscriber-subscribeWithMetrics";
+        String thisSubscriberID = "tester-subscribeWithMetrics";
+        TestMetricsCallback metricsCallback = new TestMetricsCallback();
+        EventHubConfiguration subscribeWithMetricsConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
+                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC).build())
+                .subscribeConfiguration(new SubscribeConfiguration.Builder()
+                        .subscriberName(thisSubscriberName + "-1")
+                        .subscriberInstance(thisSubscriberID)
+                        .subscribeRecency(SubscribeConfiguration.SubscribeRecency.NEWEST)
+                        .metricsCallBack(metricsCallback)
+                        .metricsIntervalMinutes(1)
+                        .metricsEnabled(true)
+                        .batchSize(10)
+                        .batchIntervalMilliseconds(1000)
+                        .batchingEnabled(true)
+                        .batchType(SubscribeConfiguration.BatchType.UNION)
+                        .build())
+                .build();
+
+        assertEquals(subscribeWithMetricsConfiguration.getSubscribeConfiguration().getBatchType(), SubscribeConfiguration.BatchType.UNION );
+    }
+
+    @Test
+    @Category(SanityTest.class)
+    public void subscribeBatchMetricsAndBatchType() throws EventHubClientException {
+        String thisSubscriberName = "test-subscriber-subscribeWithMetrics";
+        String thisSubscriberID = "tester-subscribeWithMetrics";
+        TestMetricsCallback metricsCallback = new TestMetricsCallback();
+        EventHubConfiguration subscribeWithMetricsConfiguration = new EventHubConfiguration.Builder().fromEnvironmentVariables()
+                .publishConfiguration(new PublishConfiguration.Builder().publisherType(PublishConfiguration.PublisherType.SYNC).build())
+                .subscribeConfiguration(new SubscribeConfiguration.Builder()
+                        .subscriberName(thisSubscriberName + "-1")
+                        .subscriberInstance(thisSubscriberID)
+                        .subscribeRecency(SubscribeConfiguration.SubscribeRecency.NEWEST)
+                        .metricsCallBack(metricsCallback)
+                        .metricsIntervalMinutes(1)
+                        .metricsEnabled(true)
+                        .batchSize(10)
+                        .batchIntervalMilliseconds(1000)
+                        .batchingEnabled(true)
+                        .batchType(SubscribeConfiguration.BatchType.INTERSECTION)
+                        .build())
+                .build();
+
+        assertEquals(subscribeWithMetricsConfiguration.getSubscribeConfiguration().getBatchType(), SubscribeConfiguration.BatchType.INTERSECTION );
+    }
+
 
     @After
     public void shutdown() {
